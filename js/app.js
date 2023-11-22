@@ -21,18 +21,44 @@ var generateBlanket = function () {
         }
     }
 };
+
 var getNextPattern = function(i,j) {
     var patternNo = getRandomPatternNo();
-    if (patternList[patternNo] == 0) {
-        patternNo = getNextPattern();
+    if (patternList[patternNo] == 0 || positionIsIncorrect(i,j, patternNo)) {
+        patternNo = getNextPattern(i,j);
     } else {
         patternList[patternNo] = patternList[patternNo] - 1;
     };
 
     return patternNo;
-}
+};
 
-    var updateQuantity = function() {
+var positionIsIncorrect =  function(i,j, patternNo) {
+    var prevCol = j-1;
+    var prevRow = i-1;
+    var posIsIncorrect = false;
+
+    if (i == 0 && j == 0) {
+        return false;
+    } 
+
+    if( i == 0 && j > 0) {
+        return blanket[i][prevCol] == patternNo;
+    }
+
+    if( i > 0 && j == 0 ) {
+        return j < width - 1 ? blanket[prevRow][j] == patternNo || blanket[prevRow][j + 1] == patternNo : blanket[prevRow][j] == patternNo;
+    }
+
+    if( i > 0 && j > 0 ) {
+        posIsIncorrect = blanket[prevRow][prevCol] == patternNo || blanket[i][prevCol] == patternNo || blanket[prevRow][j] == patternNo;
+        return j < width - 1 ? posIsIncorrect || blanket[prevRow][j + 1] == patternNo : posIsIncorrect;
+         
+    }
+    return false;
+};
+
+var updateQuantity = function() {
     for(var i=0;i<patternList.length;i++) {
         var patternEl = document.querySelector("#pattern" + i);
         var quantity = parseInt(patternEl.querySelector("input").value) || 1;
@@ -68,8 +94,6 @@ var addPatternUI = function() {
     var countInput = document.createElement("input");
     countInput.type = "text";
     countInput.className = "short";
-    updateWidth();
-    updateHeight();
     countInput.value = width * height;
     patternList.push(width * height);
 
@@ -96,6 +120,14 @@ var getRandomPatternNo = function() {
 var displayBlanket = function() {
     var blanketEl = document.createElement("table");
     blanketEl.className = "blanket";
+
+    var blanketContainer = document.querySelector("#blanket-container");
+    if (blanketContainer.hasChildNodes()) {
+        blanketContainer.removeChild(blanketContainer.firstChild);
+    }
+
+    blanketContainer.appendChild(blanketEl);
+
     for(var i=0;i<height;i++)
     {
         var row = document.createElement("tr");
@@ -110,22 +142,21 @@ var displayBlanket = function() {
             row.appendChild(column);
         }
     }
-    var blanketContainer = document.querySelector("#blanket-container");
-    if(blanketContainer.hasChildNodes()) 
-    {
-        blanketContainer.removeChild(blanketContainer.firstChild);
-    }
     
-    blanketContainer.appendChild(blanketEl);
 };
 
 var bindEvents = function() {
-    addPatternUI();
     var generateBlanketElem = document.querySelector("#settings-btn");
     generateBlanketElem.addEventListener('click', createBlanket);
 
     var patternBtn = document.querySelector("#add-pattern-btn");
     patternBtn.addEventListener('click', addPatternUI);
+
+    var blanketWidth = document.querySelector("#columns");
+    blanketWidth.addEventListener('change', updateWidth);
+
+    var blanketHeight = document.querySelector("#rows");
+    blanketHeight.addEventListener('change', updateHeight);
 };
 
 document.addEventListener("DOMContentLoaded", bindEvents);
