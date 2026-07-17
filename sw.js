@@ -1,11 +1,11 @@
 const CACHE_NAME = 'blanket-generator-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/css/app.css',
-  '/js/app.js',
-  '/manifest.json',
-  '/icons/icon.svg'
+  './',
+  'index.html',
+  'css/app.css',
+  'js/app.js',
+  'manifest.json',
+  'icons/icon.svg'
 ];
 
 // Install Event - cache assets
