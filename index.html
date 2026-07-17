@@ -1,37 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
-    <link rel="stylesheet" href="/css/app.css" />
-    <script src="/js/app.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&display=swap" rel="stylesheet">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Blanket Random Generator</title>
+    <meta name="theme-color" content="#1c2541">
+    <title>Blanket Design Generator</title>
+    
+    <!-- PWA Manifest & App Info -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg">
+    <link rel="apple-touch-icon" href="/icons/icon.svg">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Stylesheets & Scripts -->
+    <link rel="stylesheet" href="/css/app.css">
+    <script src="/js/app.js" defer></script>
 </head>
 <body>
-    <div class="wrapper">
-        <div class="settings-container">
-            
-            <div id="settings" class="container">
+    <main class="wrapper">
+        <aside class="settings-container">
+            <header class="app-header">
+                <h1>Blanket Designer</h1>
+                <p>Create beautiful patchwork layouts</p>
+            </header>
 
-                <div class="settings">
-                    <div class="setting-name">Blanket size</div>
-                    <div class="setting-value">
-                        <input class="short" type="text" id="rows" value="1" />
-                        <span> X </span>
-                        <input class="short" type="text" id="columns" value="1" />
+            <div id="settings-card" class="panel-card">
+                <div class="setting-group">
+                    <label for="rows">Blanket size</label>
+                    <div class="size-inputs">
+                        <input type="number" id="rows" min="1" max="100" value="8" />
+                        <span class="x-divider">×</span>
+                        <input type="number" id="columns" min="1" max="100" value="8" />
                     </div>
                 </div>
 
-                <button id="add-pattern-btn" class="container default-btn"> Add pattern </button>
+                <div class="patterns-title-row">
+                    <h2>Color Patterns</h2>
+                    <span class="total-cells-badge" id="cell-count-badge">64 cells</span>
+                </div>
+
+                <!-- Patterns list will be injected here by JS -->
+                <div id="patterns-list"></div>
+
+                <button id="add-pattern-btn" class="btn btn-secondary">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Add Pattern
+                </button>
             </div>  
-            <button id="settings-btn" class="container default-btn"> Generate </button>
 
-        </div>
-        <div id="blanket-container"></div>
-    </div>
+            <button id="generate-btn" class="btn btn-primary">
+                Generate Design
+            </button>
+        </aside>
 
+        <section class="blanket-canvas">
+            <div id="blanket-container" class="canvas-inner">
+                <div class="welcome-placeholder">
+                    <h2>Your blanket design will appear here</h2>
+                    <p>Configure size and patterns, then click "Generate Design"</p>
+                </div>
+            </div>
+        </section>
+    </main>
 </body>
 </html>

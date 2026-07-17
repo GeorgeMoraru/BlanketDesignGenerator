@@ -1,100 +1,534 @@
 :root {
-    --body-background:#0b132b;
-    --container-background:#1c2541;
-    --accent-color:#3a506b;
-    --default-border:1px solid var(--accent-color);
-    --default-boder-radius:8px;
-}
-
-body {
-   
-    font-family: 'Nanum Myeongjo',serif;
+    --bg-primary: #0a0f1d;
+    --bg-panel: rgba(20, 27, 47, 0.6);
+    --bg-card: rgba(30, 41, 73, 0.4);
+    --accent: #5bc0be;
+    --accent-hover: #83edea;
+    --accent-rgb: 91, 192, 190;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #475569;
+    --border-glass: rgba(255, 255, 255, 0.06);
+    --border-glass-active: rgba(91, 192, 190, 0.3);
+    --shadow-main: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
+    --shadow-glow: 0 0 20px rgba(91, 192, 190, 0.15);
+    
+    --font-primary: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 * {
     margin: 0;
-    padding:0;
+    padding: 0;
     box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-primary);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border-glass);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
 }
 
 .wrapper {
     display: grid;
-    grid-template-rows: 100vh;
-    grid-template-columns: 25% 75%;
+    grid-template-columns: 360px 1fr;
+    height: 100vh;
+    overflow: hidden;
 }
 
-.container {
-    border-radius:var(--default-boder-radius);
-    border:var(--default-border);
-    background-color: var(--container-background);
-    color:var(--accent-color);
-    padding:10px;
-    display: inline-block;
-    width:100%;
-    margin-bottom:10px;
-}
-
-button,input {
-    text-decoration: none;
-    border:none;
-    background-color: inherit;
-    border-radius:var(--default-boder-radius);
-    border:var(--default-border);
-    padding:5px;
-    color:var(--accent-color);
-    text-align:center;
-    font-size:12px;
-}
-
+/* Sidebar Design (Glassmorphism) */
 .settings-container {
-    padding:10px;
-    background-color: var(--body-background);
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    height: 100vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-main);
+    z-index: 10;
 }
 
-.settings {
-    margin-bottom:10px;
-    display: inline-block;
-    width:100%;
+.app-header {
+    margin-bottom: 8px;
 }
 
-.setting-name,
-.setting-value {
-    display: inline-block;
-    float:left;
+.app-header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
-.setting-name {
-    width:30%;
+.app-header p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 4px;
 }
 
-.setting-value {
-    width: 70%;
+/* Panel Card Settings */
+.panel-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
-.short {
-    width:100px;
+.setting-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.default-btn {
-    float:right;
-    width:150px;
+.setting-group label {
     font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
 }
 
+.size-inputs {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.size-inputs input[type="number"] {
+    width: 100%;
+}
+
+/* Custom inputs & selectors */
+input[type="number"],
+input[type="text"],
+select {
+    width: 100%;
+    background: rgba(10, 15, 29, 0.6);
+    border: 1px solid var(--border-glass);
+    border-radius: 8px;
+    color: var(--text-primary);
+    padding: 8px 12px;
+    font-family: var(--font-primary);
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input[type="number"]:focus,
+input[type="text"]:focus,
+select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(91, 192, 190, 0.2);
+    background: rgba(10, 15, 29, 0.8);
+}
+
+.x-divider {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 16px;
+}
+
+/* Pattern Header Row */
+.patterns-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-glass);
+    padding-bottom: 8px;
+    margin-top: 4px;
+}
+
+.patterns-title-row h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.total-cells-badge {
+    background: rgba(91, 192, 190, 0.1);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(91, 192, 190, 0.2);
+}
+
+/* Dynamic Pattern Rows list */
+#patterns-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+/* Dynamic Card Item Styling */
+.pattern-item {
+    background: rgba(10, 15, 29, 0.4);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    animation: slideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: border-color 0.2s;
+}
+
+.pattern-item:hover {
+    border-color: var(--border-glass-active);
+}
+
+.pattern-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.pattern-title-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pattern-index-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+/* Preview Pattern Symbol in Sidebar */
 .patternSymbol {
-    width:10px;
-    height:10px;
-    border-radius:100%;
-    border:var(--default-border);
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
     display: inline-block;
-    margin-right: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    position: relative;
+    overflow: hidden;
 }
 
-.floatRight {
-    float:right;
+/* Stitch pattern lines overlay on the previews as well */
+.patternSymbol::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: 
+        linear-gradient(to right, rgba(0,0,0,0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,0.06) 1px, transparent 1px);
+    background-size: 3px 3px;
+    pointer-events: none;
 }
 
-.cellSqaure{
-    width:50px;
-    height:50px;
+.pattern-inputs-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 8px;
+    align-items: center;
+}
+
+.pattern-qty-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pattern-qty-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+/* Style Select dropdown sizing */
+.pattern-style-select {
+    padding: 5px 8px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
+.pattern-qty-input {
+    padding: 5px 8px;
+    font-size: 12px;
+    border-radius: 6px;
+    text-align: center;
+}
+
+/* Delete Button */
+.btn-delete {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-delete:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* Standard Buttons styling */
+.btn {
+    font-family: var(--font-primary);
+    font-weight: 600;
+    font-size: 14px;
+    padding: 11px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    outline: none;
+    border: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn:active {
+    transform: scale(0.97);
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: #050a14;
+    box-shadow: 0 4px 14px rgba(91, 192, 190, 0.3);
+}
+
+.btn-primary:hover {
+    background: var(--accent-hover);
+    box-shadow: 0 6px 20px rgba(91, 192, 190, 0.45);
+}
+
+.btn-secondary {
+    background: rgba(30, 41, 73, 0.6);
+    color: var(--text-primary);
+    border: 1px solid var(--border-glass);
+}
+
+.btn-secondary:hover {
+    background: rgba(30, 41, 73, 0.9);
+    border-color: var(--border-glass-active);
+}
+
+/* Canvas Blanket Container (Right Side) */
+.blanket-canvas {
+    background-color: #060913;
+    padding: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: auto;
+    height: 100vh;
+    position: relative;
+}
+
+/* Welcome Screen inside Canvas */
+.welcome-placeholder {
+    text-align: center;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    animation: fadeIn 0.6s ease;
+}
+
+.welcome-placeholder h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.welcome-placeholder p {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.canvas-inner {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+/* Table grid styling for blanket layout */
+table.blanket {
+    border-collapse: separate;
+    border-spacing: 4px;
+    background: #0f172a;
+    padding: 16px;
+    border-radius: 24px;
+    box-shadow: 
+        0 20px 50px rgba(0, 0, 0, 0.8),
+        0 0 0 1px rgba(255, 255, 255, 0.05);
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+}
+
+/* Cell Square element styling */
+.cellSquare {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: 
+        inset 0 1px 0 rgba(255,255,255,0.15),
+        0 1px 2px rgba(0,0,0,0.4);
+    animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cellSquare:hover {
+    transform: scale(1.08);
+    box-shadow: 
+        0 8px 16px rgba(0, 0, 0, 0.6),
+        0 0 0 2px var(--accent);
+    z-index: 10;
+}
+
+/* Stitched crochet textile overlay texture on cells */
+.cellSquare::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.06) 1px, transparent 1px, transparent 4px, rgba(0, 0, 0, 0.12) 5px, transparent 5px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px, transparent 4px, rgba(0, 0, 0, 0.12) 5px, transparent 5px);
+    background-size: 5px 5px;
+    mix-blend-mode: overlay;
+    opacity: 0.95;
+    border-radius: 8px;
+}
+
+/* -------------------------------------------------------------
+   GRANNY SQUARE CSS PATTERNS (Using custom properties)
+   ------------------------------------------------------------- */
+
+/* Style 0: Solid */
+.granny-solid {
+    background-color: var(--color-1);
+}
+
+/* Style 1: Classic Concentric Squares */
+.granny-classic {
+    background-color: var(--color-1); /* center square */
+    box-shadow: 
+        inset 0 0 0 5px var(--color-4),  /* outer ring */
+        inset 0 0 0 11px var(--color-3), /* middle ring */
+        inset 0 0 0 17px var(--color-2); /* inner ring */
+}
+
+/* Style 2: Flower Center */
+.granny-flower {
+    background: 
+        radial-gradient(circle, var(--color-1) 18%, transparent 19%), /* core */
+        radial-gradient(circle, var(--color-2) 42%, transparent 43%), /* petals */
+        var(--color-3); /* outer background */
+}
+
+/* Style 3: Mitered (L-shaped stripes) */
+.granny-mitered {
+    background-color: var(--color-1); /* top-left start */
+    box-shadow: 
+        inset 6px 6px 0 var(--color-2),
+        inset 13px 13px 0 var(--color-3),
+        inset 20px 20px 0 var(--color-4);
+}
+
+/* Style 4: Diamond Quadrants (Pinwheel) */
+.granny-diamond {
+    background: conic-gradient(
+        from 45deg, 
+        var(--color-1) 0deg 90deg, 
+        var(--color-2) 90deg 180deg, 
+        var(--color-3) 180deg 270deg, 
+        var(--color-4) 270deg 360deg
+    );
+}
+
+/* Style 5: Target Rings (Concentric Circles) */
+.granny-target {
+    background: 
+        radial-gradient(circle, var(--color-1) 15%, transparent 16%),
+        radial-gradient(circle, var(--color-2) 35%, transparent 36%),
+        radial-gradient(circle, var(--color-3) 55%, transparent 56%),
+        var(--color-4);
+}
+
+/* Style 6: Checkerboard (2x2 Four-Patch) */
+.granny-checker {
+    background: conic-gradient(
+        from 0deg, 
+        var(--color-1) 0deg 90deg, 
+        var(--color-2) 90deg 180deg, 
+        var(--color-3) 180deg 270deg, 
+        var(--color-4) 270deg 360deg
+    );
+}
+
+/* Animations */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes popIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.3);
+    }
+    70% {
+        transform: scale(1.05);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
