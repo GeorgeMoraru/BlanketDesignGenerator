@@ -700,6 +700,33 @@ select {
     transform: scale(0.95);
 }
 
+/* History Backup Card */
+.sync-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: -4px 0 8px;
+    line-height: 1.5;
+}
+
+.sync-btn-row {
+    display: flex;
+    gap: 8px;
+}
+
+.sync-btn-row .btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.import-label {
+    text-align: center;
+}
+
 /* Design History list */
 .history-list {
     display: flex;

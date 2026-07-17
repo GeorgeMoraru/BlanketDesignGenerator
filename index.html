@@ -72,22 +72,23 @@
                 Generate Design
             </button>
 
-            <!-- GitHub Cloud Sync Settings -->
+            <!-- History Export / Import -->
             <div id="sync-card" class="panel-card">
                 <div class="card-header-row">
-                    <h2>GitHub Database Sync</h2>
+                    <h2>History Backup</h2>
                 </div>
-                <div class="setting-group">
-                    <label for="github-pat">Personal Access Token (PAT)</label>
-                    <input type="password" id="github-pat" placeholder="ghp_..." />
+                <p class="sync-hint">Export your saved designs as a JSON file, or import a previously saved file to restore them.</p>
+                <div class="sync-btn-row">
+                    <button id="export-history-btn" class="btn btn-secondary">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Export JSON
+                    </button>
+                    <label for="import-history-input" class="btn btn-secondary import-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        Import JSON
+                    </label>
+                    <input type="file" id="import-history-input" accept=".json" style="display:none;" />
                 </div>
-                <div class="setting-group">
-                    <label for="github-repo">Repository (owner/name)</label>
-                    <input type="text" id="github-repo" placeholder="owner/repo" />
-                </div>
-                <button id="save-sync-btn" class="btn btn-secondary">
-                    Save Sync Settings
-                </button>
             </div>
 
             <!-- Design History list -->

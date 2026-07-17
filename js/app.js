@@ -91,10 +91,7 @@
         patterns: [],
         blanketGrid: [],
         nextPatternId: 0,
-        history: [],
-        githubPat: '',
-        githubRepo: '',
-        githubFileSha: ''
+        history: []
     };
 
     // Initialize state with default configuration
@@ -444,7 +441,7 @@
     };
 
     // =========================================================================
-    // 7. Drawer, History, GitHub Sync, & Export Controllers
+    // 7. Drawer, History, Export & Import Controllers
     // =========================================================================
     
     // Toggle Settings Drawer
@@ -455,47 +452,57 @@
         if (overlay) overlay.classList.toggle('active', open);
     };
 
-    // Save Sync credentials
-    const saveSyncSettings = () => {
-        const patInput = document.querySelector('#github-pat');
-        const repoInput = document.querySelector('#github-repo');
-        
-        state.githubPat = patInput ? patInput.value.trim() : '';
-        state.githubRepo = repoInput ? repoInput.value.trim() : '';
-        
-        localStorage.setItem('blanket_github_pat', state.githubPat);
-        localStorage.setItem('blanket_github_repo', state.githubRepo);
-        
-        alert('Sync settings saved! Fetching history from cloud...');
-        syncHistoryFromGitHub();
-    };
-
-    const loadSyncSettings = () => {
-        state.githubPat = localStorage.getItem('blanket_github_pat') || '';
-        state.githubRepo = localStorage.getItem('blanket_github_repo') || '';
-        
-        const patInput = document.querySelector('#github-pat');
-        const repoInput = document.querySelector('#github-repo');
-        
-        if (patInput) patInput.value = state.githubPat;
-        if (repoInput) repoInput.value = state.githubRepo;
-    };
-
+    // Initialize history from localStorage
     const initHistory = () => {
-        loadSyncSettings();
-        
-        if (state.githubPat && state.githubRepo) {
-            syncHistoryFromGitHub();
-        } else {
-            try {
-                const localData = localStorage.getItem('blanket_local_history');
-                state.history = localData ? JSON.parse(localData) : [];
-            } catch (e) {
-                console.error('Failed to parse local history:', e);
-                state.history = [];
-            }
-            renderHistoryList();
+        try {
+            const localData = localStorage.getItem('blanket_local_history');
+            state.history = localData ? JSON.parse(localData) : [];
+        } catch (e) {
+            console.error('Failed to parse local history:', e);
+            state.history = [];
         }
+        renderHistoryList();
+    };
+
+    // Export history as a downloadable JSON file
+    const exportHistory = () => {
+        if (state.history.length === 0) {
+            alert('No designs saved yet. Generate a design first!');
+            return;
+        }
+        const json = JSON.stringify(state.history, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.download = `blanket-history-${Date.now()}.json`;
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+    };
+
+    // Import history from a JSON file
+    const importHistory = (file) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const imported = JSON.parse(e.target.result);
+                if (!Array.isArray(imported)) throw new Error('Invalid format');
+                // Merge imported with existing, deduplicate by id, keep newest 500
+                const merged = [...imported, ...state.history];
+                const seen = new Set();
+                state.history = merged.filter(item => {
+                    if (seen.has(item.id)) return false;
+                    seen.add(item.id);
+                    return true;
+                }).slice(0, 500);
+                localStorage.setItem('blanket_local_history', JSON.stringify(state.history));
+                renderHistoryList();
+                alert(`Imported ${imported.length} design(s) successfully!`);
+            } catch (err) {
+                alert('Failed to import: invalid JSON file.');
+            }
+        };
+        reader.readAsText(file);
     };
 
     const renderHistoryList = () => {
@@ -628,115 +635,8 @@
         
         localStorage.setItem('blanket_local_history', JSON.stringify(state.history));
         renderHistoryList();
-        
-        if (state.githubPat && state.githubRepo) {
-            pushHistoryToGitHub();
-        }
     };
 
-    const syncHistoryFromGitHub = () => {
-        if (!state.githubPat || !state.githubRepo) return;
-        
-        const url = `https://api.github.com/repos/${state.githubRepo}/contents/blanket-history.json`;
-        
-        fetch(url, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/vnd.github.v3+json',
-                'Authorization': `token ${state.githubPat}`,
-                'Cache-Control': 'no-cache'
-            }
-        })
-        .then(res => {
-            if (res.status === 200) {
-                return res.json();
-            } else if (res.status === 404) {
-                state.githubFileSha = '';
-                throw new Error('FILE_NOT_FOUND');
-            } else {
-                throw new Error(`API_ERROR_${res.status}`);
-            }
-        })
-        .then(data => {
-            state.githubFileSha = data.sha;
-            const jsonText = atob(data.content);
-            const remoteHistory = JSON.parse(jsonText);
-            
-            if (Array.isArray(remoteHistory)) {
-                state.history = remoteHistory.slice(0, 500);
-                localStorage.setItem('blanket_local_history', JSON.stringify(state.history));
-                renderHistoryList();
-                console.log('Successfully synced history from GitHub.');
-            }
-        })
-        .catch(err => {
-            if (err.message !== 'FILE_NOT_FOUND') {
-                console.error('Failed to sync history from GitHub:', err);
-                try {
-                    const localData = localStorage.getItem('blanket_local_history');
-                    state.history = localData ? JSON.parse(localData) : [];
-                } catch (e) {
-                    state.history = [];
-                }
-                renderHistoryList();
-            }
-        });
-    };
-
-    const pushHistoryToGitHub = () => {
-        if (!state.githubPat || !state.githubRepo) return;
-        
-        const url = `https://api.github.com/repos/${state.githubRepo}/contents/blanket-history.json`;
-        const jsonContent = JSON.stringify(state.history);
-        const base64Content = btoa(unescape(encodeURIComponent(jsonContent)));
-        
-        const bodyData = {
-            message: `Update blanket designer history [${state.history.length} entries]`,
-            content: base64Content
-        };
-        
-        if (state.githubFileSha) {
-            bodyData.sha = state.githubFileSha;
-        }
-        
-        fetch(url, {
-            method: 'PUT',
-            headers: {
-                'Accept': 'application/vnd.github.v3+json',
-                'Authorization': `token ${state.githubPat}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(bodyData)
-        })
-        .then(res => {
-            if (res.status === 200 || res.status === 201) {
-                return res.json();
-            } else {
-                if (res.status === 409) {
-                    console.warn('GitHub conflict. Re-syncing SHA and retrying...');
-                    fetch(url, {
-                        headers: {
-                            'Accept': 'application/vnd.github.v3+json',
-                            'Authorization': `token ${state.githubPat}`
-                        }
-                    })
-                    .then(r => r.json())
-                    .then(latest => {
-                        state.githubFileSha = latest.sha;
-                        pushHistoryToGitHub();
-                    });
-                }
-                throw new Error(`PUSH_FAILED_${res.status}`);
-            }
-        })
-        .then(data => {
-            state.githubFileSha = data.content.sha;
-            console.log('Successfully saved history to GitHub.');
-        })
-        .catch(err => {
-            console.error('Failed to push history to GitHub:', err);
-        });
-    };
 
     // Canvas Draw Helpers
     const drawRoundedRect = (ctx, x, y, width, height, radius) => {
@@ -1008,10 +908,19 @@
             menuOverlay.addEventListener('click', () => toggleDrawer(false));
         }
 
-        // Save sync credentials
-        const saveSyncBtn = document.querySelector('#save-sync-btn');
-        if (saveSyncBtn) {
-            saveSyncBtn.addEventListener('click', saveSyncSettings);
+        // Export history as JSON
+        const exportBtn = document.querySelector('#export-history-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', exportHistory);
+        }
+
+        // Import history from JSON file
+        const importInput = document.querySelector('#import-history-input');
+        if (importInput) {
+            importInput.addEventListener('change', (e) => {
+                importHistory(e.target.files[0]);
+                e.target.value = ''; // reset so same file can be re-imported
+            });
         }
 
         // Download image floating button click
