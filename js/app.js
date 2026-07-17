@@ -90,7 +90,11 @@
         cols: 8,
         patterns: [],
         blanketGrid: [],
-        nextPatternId: 0
+        nextPatternId: 0,
+        history: [],
+        githubPat: '',
+        githubRepo: '',
+        githubFileSha: ''
     };
 
     // Initialize state with default configuration
@@ -427,13 +431,536 @@
         // Render table
         canvas.innerHTML = '';
         canvas.appendChild(table);
+
+        // Show download FAB
+        const downloadBtn = document.querySelector('#download-image-btn');
+        if (downloadBtn) downloadBtn.style.display = 'flex';
+
+        // Auto-close settings menu drawer
+        toggleDrawer(false);
+
+        // Save layout to history (sync to cloud if configured)
+        appendToHistory();
     };
 
     // =========================================================================
-    // 7. Event Bindings Setup
+    // 7. Drawer, History, GitHub Sync, & Export Controllers
+    // =========================================================================
+    
+    // Toggle Settings Drawer
+    const toggleDrawer = (open) => {
+        const drawer = document.querySelector('.settings-container');
+        const overlay = document.querySelector('#menu-overlay');
+        if (drawer) drawer.classList.toggle('open', open);
+        if (overlay) overlay.classList.toggle('active', open);
+    };
+
+    // Save Sync credentials
+    const saveSyncSettings = () => {
+        const patInput = document.querySelector('#github-pat');
+        const repoInput = document.querySelector('#github-repo');
+        
+        state.githubPat = patInput ? patInput.value.trim() : '';
+        state.githubRepo = repoInput ? repoInput.value.trim() : '';
+        
+        localStorage.setItem('blanket_github_pat', state.githubPat);
+        localStorage.setItem('blanket_github_repo', state.githubRepo);
+        
+        alert('Sync settings saved! Fetching history from cloud...');
+        syncHistoryFromGitHub();
+    };
+
+    const loadSyncSettings = () => {
+        state.githubPat = localStorage.getItem('blanket_github_pat') || '';
+        state.githubRepo = localStorage.getItem('blanket_github_repo') || '';
+        
+        const patInput = document.querySelector('#github-pat');
+        const repoInput = document.querySelector('#github-repo');
+        
+        if (patInput) patInput.value = state.githubPat;
+        if (repoInput) repoInput.value = state.githubRepo;
+    };
+
+    const initHistory = () => {
+        loadSyncSettings();
+        
+        if (state.githubPat && state.githubRepo) {
+            syncHistoryFromGitHub();
+        } else {
+            try {
+                const localData = localStorage.getItem('blanket_local_history');
+                state.history = localData ? JSON.parse(localData) : [];
+            } catch (e) {
+                console.error('Failed to parse local history:', e);
+                state.history = [];
+            }
+            renderHistoryList();
+        }
+    };
+
+    const renderHistoryList = () => {
+        const listContainer = document.querySelector('#history-list');
+        const countBadge = document.querySelector('#history-count-badge');
+        if (!listContainer) return;
+        
+        listContainer.innerHTML = '';
+        if (countBadge) countBadge.innerText = `${state.history.length} saved`;
+        
+        if (state.history.length === 0) {
+            listContainer.innerHTML = '<div class="history-empty-state">No designs saved yet.</div>';
+            return;
+        }
+        
+        state.history.forEach((item) => {
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item';
+            historyItem.dataset.id = item.id;
+            
+            const dateStr = new Date(item.timestamp).toLocaleString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            let swatchesHtml = '';
+            const uniqueColors = new Set();
+            item.patterns.forEach(p => p.colors.forEach(c => uniqueColors.add(c)));
+            Array.from(uniqueColors).slice(0, 8).forEach(color => {
+                swatchesHtml += `<div class="history-preview-swatch" style="background: ${color};"></div>`;
+            });
+            
+            historyItem.innerHTML = `
+                <div class="history-item-header">
+                    <span class="history-item-time">${dateStr}</span>
+                    <span class="history-item-size">${item.rows}×${item.cols}</span>
+                </div>
+                <div class="history-preview-bar">
+                    ${swatchesHtml}
+                </div>
+            `;
+            
+            historyItem.addEventListener('click', () => {
+                restoreDesign(item.id);
+            });
+            
+            listContainer.appendChild(historyItem);
+        });
+    };
+
+    const restoreDesign = (id) => {
+        const item = state.history.find(h => h.id === id);
+        if (!item) return;
+        
+        state.rows = item.rows;
+        state.cols = item.cols;
+        state.patterns = JSON.parse(JSON.stringify(item.patterns));
+        state.blanketGrid = JSON.parse(JSON.stringify(item.grid));
+        
+        const rowsInput = document.querySelector('#rows');
+        const colsInput = document.querySelector('#columns');
+        if (rowsInput) rowsInput.value = state.rows;
+        if (colsInput) colsInput.value = state.cols;
+        
+        let maxPatternId = 0;
+        state.patterns.forEach(p => {
+            if (p.id >= maxPatternId) maxPatternId = p.id + 1;
+        });
+        state.nextPatternId = maxPatternId;
+        
+        renderPatternsList();
+        updateDimensionsInfo();
+        
+        const canvas = document.querySelector('#blanket-container');
+        if (canvas) {
+            const table = document.createElement('table');
+            table.className = 'blanket';
+            
+            for (let r = 0; r < state.rows; r++) {
+                const row = document.createElement('tr');
+                for (let c = 0; c < state.cols; c++) {
+                    const cell = document.createElement('td');
+                    cell.className = 'cellSquare';
+                    
+                    const patternId = state.blanketGrid[r][c];
+                    const pattern = state.patterns.find(p => p.id === patternId);
+                    
+                    if (pattern) {
+                        const styleDetails = PATTERN_STYLES[pattern.style];
+                        cell.classList.add(styleDetails.className);
+                        cell.style = getPatternColorVariables(pattern.colors);
+                    } else {
+                        cell.classList.add('granny-solid');
+                        cell.style = '--color-1: #1e294b;';
+                    }
+                    
+                    const delay = (r + c) * 15;
+                    cell.style.animationDelay = `${delay}ms`;
+                    row.appendChild(cell);
+                }
+                table.appendChild(row);
+            }
+            canvas.innerHTML = '';
+            canvas.appendChild(table);
+        }
+        
+        const downloadBtn = document.querySelector('#download-image-btn');
+        if (downloadBtn) downloadBtn.style.display = 'flex';
+        
+        toggleDrawer(false);
+    };
+
+    const appendToHistory = () => {
+        const entry = {
+            id: `design_${Date.now()}`,
+            timestamp: Date.now(),
+            rows: state.rows,
+            cols: state.cols,
+            patterns: JSON.parse(JSON.stringify(state.patterns)),
+            grid: JSON.parse(JSON.stringify(state.blanketGrid))
+        };
+        
+        state.history.unshift(entry);
+        
+        if (state.history.length > 500) {
+            state.history = state.history.slice(0, 500);
+        }
+        
+        localStorage.setItem('blanket_local_history', JSON.stringify(state.history));
+        renderHistoryList();
+        
+        if (state.githubPat && state.githubRepo) {
+            pushHistoryToGitHub();
+        }
+    };
+
+    const syncHistoryFromGitHub = () => {
+        if (!state.githubPat || !state.githubRepo) return;
+        
+        const url = `https://api.github.com/repos/${state.githubRepo}/contents/blanket-history.json`;
+        
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/vnd.github.v3+json',
+                'Authorization': `token ${state.githubPat}`,
+                'Cache-Control': 'no-cache'
+            }
+        })
+        .then(res => {
+            if (res.status === 200) {
+                return res.json();
+            } else if (res.status === 404) {
+                state.githubFileSha = '';
+                throw new Error('FILE_NOT_FOUND');
+            } else {
+                throw new Error(`API_ERROR_${res.status}`);
+            }
+        })
+        .then(data => {
+            state.githubFileSha = data.sha;
+            const jsonText = atob(data.content);
+            const remoteHistory = JSON.parse(jsonText);
+            
+            if (Array.isArray(remoteHistory)) {
+                state.history = remoteHistory.slice(0, 500);
+                localStorage.setItem('blanket_local_history', JSON.stringify(state.history));
+                renderHistoryList();
+                console.log('Successfully synced history from GitHub.');
+            }
+        })
+        .catch(err => {
+            if (err.message !== 'FILE_NOT_FOUND') {
+                console.error('Failed to sync history from GitHub:', err);
+                try {
+                    const localData = localStorage.getItem('blanket_local_history');
+                    state.history = localData ? JSON.parse(localData) : [];
+                } catch (e) {
+                    state.history = [];
+                }
+                renderHistoryList();
+            }
+        });
+    };
+
+    const pushHistoryToGitHub = () => {
+        if (!state.githubPat || !state.githubRepo) return;
+        
+        const url = `https://api.github.com/repos/${state.githubRepo}/contents/blanket-history.json`;
+        const jsonContent = JSON.stringify(state.history);
+        const base64Content = btoa(unescape(encodeURIComponent(jsonContent)));
+        
+        const bodyData = {
+            message: `Update blanket designer history [${state.history.length} entries]`,
+            content: base64Content
+        };
+        
+        if (state.githubFileSha) {
+            bodyData.sha = state.githubFileSha;
+        }
+        
+        fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Accept': 'application/vnd.github.v3+json',
+                'Authorization': `token ${state.githubPat}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(bodyData)
+        })
+        .then(res => {
+            if (res.status === 200 || res.status === 201) {
+                return res.json();
+            } else {
+                if (res.status === 409) {
+                    console.warn('GitHub conflict. Re-syncing SHA and retrying...');
+                    fetch(url, {
+                        headers: {
+                            'Accept': 'application/vnd.github.v3+json',
+                            'Authorization': `token ${state.githubPat}`
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(latest => {
+                        state.githubFileSha = latest.sha;
+                        pushHistoryToGitHub();
+                    });
+                }
+                throw new Error(`PUSH_FAILED_${res.status}`);
+            }
+        })
+        .then(data => {
+            state.githubFileSha = data.content.sha;
+            console.log('Successfully saved history to GitHub.');
+        })
+        .catch(err => {
+            console.error('Failed to push history to GitHub:', err);
+        });
+    };
+
+    // Canvas Draw Helpers
+    const drawRoundedRect = (ctx, x, y, width, height, radius) => {
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + width - radius, y);
+        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+        ctx.lineTo(x + width, y + height - radius);
+        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+        ctx.lineTo(x + radius, y + height);
+        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+    };
+
+    const drawStitchOverlay = (ctx, x, y, size) => {
+        const step = 8;
+        ctx.save();
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+        for (let offset = 0; offset < size; offset += step) {
+            ctx.beginPath();
+            ctx.moveTo(x + offset, y);
+            ctx.lineTo(x + offset, y + size);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y + offset);
+            ctx.lineTo(x + size, y + offset);
+            ctx.stroke();
+        }
+        
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.lineWidth = 1;
+        for (let offset = 4; offset < size; offset += step) {
+            ctx.beginPath();
+            ctx.moveTo(x + offset, y);
+            ctx.lineTo(x + offset, y + size);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y + offset);
+            ctx.lineTo(x + size, y + offset);
+            ctx.stroke();
+        }
+        
+        ctx.restore();
+    };
+
+    const exportBlanketAsImage = () => {
+        const rows = state.rows;
+        const cols = state.cols;
+        if (!state.blanketGrid || state.blanketGrid.length === 0) return;
+        
+        const cellSize = 100;
+        const spacing = 8;
+        const padding = 24;
+        
+        const width = cols * cellSize + (cols - 1) * spacing + padding * 2;
+        const height = rows * cellSize + (rows - 1) * spacing + padding * 2;
+        
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(0, 0, width, height);
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(1, 1, width - 2, height - 2);
+        
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const x = padding + c * (cellSize + spacing);
+                const y = padding + r * (cellSize + spacing);
+                
+                const patternId = state.blanketGrid[r][c];
+                const pattern = state.patterns.find(p => p.id === patternId);
+                
+                ctx.save();
+                drawRoundedRect(ctx, x, y, cellSize, cellSize, 12);
+                ctx.clip();
+                
+                if (pattern) {
+                    const style = pattern.style;
+                    const c1 = pattern.colors[0];
+                    const c2 = pattern.colors[1];
+                    const c3 = pattern.colors[2];
+                    const c4 = pattern.colors[3];
+                    
+                    if (style === 'solid') {
+                        ctx.fillStyle = c1;
+                        ctx.fillRect(x, y, cellSize, cellSize);
+                    } else if (style === 'classic') {
+                        ctx.fillStyle = c1;
+                        ctx.fillRect(x, y, cellSize, cellSize);
+                        
+                        ctx.fillStyle = c4;
+                        const o1 = cellSize * 0.12;
+                        ctx.fillRect(x + o1, y + o1, cellSize - o1*2, cellSize - o1*2);
+                        
+                        ctx.fillStyle = c3;
+                        const o2 = cellSize * 0.24;
+                        ctx.fillRect(x + o2, y + o2, cellSize - o2*2, cellSize - o2*2);
+                        
+                        ctx.fillStyle = c2;
+                        const o3 = cellSize * 0.36;
+                        ctx.fillRect(x + o3, y + o3, cellSize - o3*2, cellSize - o3*2);
+                    } else if (style === 'flower') {
+                        ctx.fillStyle = c3;
+                        ctx.fillRect(x, y, cellSize, cellSize);
+                        
+                        ctx.fillStyle = c2;
+                        ctx.beginPath();
+                        ctx.arc(x + cellSize/2, y + cellSize/2, cellSize * 0.42, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.fillStyle = c1;
+                        ctx.beginPath();
+                        ctx.arc(x + cellSize/2, y + cellSize/2, cellSize * 0.18, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (style === 'mitered') {
+                        ctx.fillStyle = c2;
+                        ctx.fillRect(x, y, cellSize, cellSize);
+                        
+                        ctx.fillStyle = c3;
+                        const o1 = cellSize * 0.12;
+                        ctx.fillRect(x + o1, y + o1, cellSize - o1, cellSize - o1);
+                        
+                        ctx.fillStyle = c4;
+                        const o2 = cellSize * 0.26;
+                        ctx.fillRect(x + o2, y + o2, cellSize - o2, cellSize - o2);
+                        
+                        ctx.fillStyle = c1;
+                        const o3 = cellSize * 0.40;
+                        ctx.fillRect(x + o3, y + o3, cellSize - o3, cellSize - o3);
+                    } else if (style === 'diamond') {
+                        const cx = x + cellSize/2;
+                        const cy = y + cellSize/2;
+                        
+                        ctx.fillStyle = c1;
+                        ctx.beginPath();
+                        ctx.moveTo(cx, cy);
+                        ctx.lineTo(x, y);
+                        ctx.lineTo(x + cellSize, y);
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        ctx.fillStyle = c2;
+                        ctx.beginPath();
+                        ctx.moveTo(cx, cy);
+                        ctx.lineTo(x + cellSize, y);
+                        ctx.lineTo(x + cellSize, y + cellSize);
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        ctx.fillStyle = c3;
+                        ctx.beginPath();
+                        ctx.moveTo(cx, cy);
+                        ctx.lineTo(x + cellSize, y + cellSize);
+                        ctx.lineTo(x, y + cellSize);
+                        ctx.closePath();
+                        ctx.fill();
+                        
+                        ctx.fillStyle = c4;
+                        ctx.beginPath();
+                        ctx.moveTo(cx, cy);
+                        ctx.lineTo(x, y + cellSize);
+                        ctx.lineTo(x, y);
+                        ctx.closePath();
+                        ctx.fill();
+                    } else if (style === 'target') {
+                        ctx.fillStyle = c4;
+                        ctx.fillRect(x, y, cellSize, cellSize);
+                        
+                        ctx.fillStyle = c3;
+                        ctx.beginPath();
+                        ctx.arc(x + cellSize/2, y + cellSize/2, cellSize * 0.55, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.fillStyle = c2;
+                        ctx.beginPath();
+                        ctx.arc(x + cellSize/2, y + cellSize/2, cellSize * 0.35, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        ctx.fillStyle = c1;
+                        ctx.beginPath();
+                        ctx.arc(x + cellSize/2, y + cellSize/2, cellSize * 0.15, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (style === 'checker') {
+                        ctx.fillStyle = c1;
+                        ctx.fillRect(x, y, cellSize/2, cellSize/2);
+                        
+                        ctx.fillStyle = c2;
+                        ctx.fillRect(x + cellSize/2, y, cellSize/2, cellSize/2);
+                        
+                        ctx.fillStyle = c4;
+                        ctx.fillRect(x, y + cellSize/2, cellSize/2, cellSize/2);
+                        
+                        ctx.fillStyle = c3;
+                        ctx.fillRect(x + cellSize/2, y + cellSize/2, cellSize/2, cellSize/2);
+                    }
+                } else {
+                    ctx.fillStyle = '#1e294b';
+                    ctx.fillRect(x, y, cellSize, cellSize);
+                }
+                
+                drawStitchOverlay(ctx, x, y, cellSize);
+                ctx.restore();
+            }
+        }
+        
+        const link = document.createElement('a');
+        link.download = `blanket-design-${rows}x${cols}-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    };
+
+    // =========================================================================
+    // 8. Event Bindings Setup
     // =========================================================================
     const bindEvents = () => {
-        // Blanket Dimensions adjustments
         const rowsInput = document.querySelector('#rows');
         const colsInput = document.querySelector('#columns');
         
@@ -446,37 +973,62 @@
             colsInput.addEventListener('input', onDimensionsChange);
         }
 
-        // Add Pattern Click
         const addPatternBtn = document.querySelector('#add-pattern-btn');
         if (addPatternBtn) {
             addPatternBtn.addEventListener('click', () => {
-                // Determine layout styles currently available
                 const styles = Object.keys(PATTERN_STYLES);
                 const randomStyle = styles[Math.floor(Math.random() * styles.length)];
-                
-                // Sync current state quantities first so we don't wipe out edits
                 syncUIQuantitiesToState();
-                
                 addPatternToState(randomStyle);
                 renderPatternsList();
                 updateDimensionsInfo();
             });
         }
 
-        // Generate Design Click
         const generateBtn = document.querySelector('#generate-btn');
         if (generateBtn) {
             generateBtn.addEventListener('click', drawBlanketCanvas);
         }
+
+        // Settings Toggle Button
+        const menuToggleBtn = document.querySelector('#menu-toggle-btn');
+        if (menuToggleBtn) {
+            menuToggleBtn.addEventListener('click', () => toggleDrawer(true));
+        }
+
+        // Settings Close Button
+        const menuCloseBtn = document.querySelector('#menu-close-btn');
+        if (menuCloseBtn) {
+            menuCloseBtn.addEventListener('click', () => toggleDrawer(false));
+        }
+
+        // Overlay backdrop click
+        const menuOverlay = document.querySelector('#menu-overlay');
+        if (menuOverlay) {
+            menuOverlay.addEventListener('click', () => toggleDrawer(false));
+        }
+
+        // Save sync credentials
+        const saveSyncBtn = document.querySelector('#save-sync-btn');
+        if (saveSyncBtn) {
+            saveSyncBtn.addEventListener('click', saveSyncSettings);
+        }
+
+        // Download image floating button click
+        const downloadImageBtn = document.querySelector('#download-image-btn');
+        if (downloadImageBtn) {
+            downloadImageBtn.addEventListener('click', exportBlanketAsImage);
+        }
     };
 
     // =========================================================================
-    // 8. Application Bootstrap
+    // 9. Application Bootstrap
     // =========================================================================
     document.addEventListener('DOMContentLoaded', () => {
         initDefaultState();
         renderPatternsList();
         updateDimensionsInfo();
+        initHistory();
         bindEvents();
     });
 
