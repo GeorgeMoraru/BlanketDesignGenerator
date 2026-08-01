@@ -61,20 +61,20 @@
     // =========================================================================
     // 3. Color Utilities (Cozy Pastel HSL Palette Generator)
     // =========================================================================
-    const generateHarmoniousPalette = () => {
-        // Pick a base hue randomly across the 360-degree color wheel
-        const baseHue = Math.floor(Math.random() * 360);
-        // Soft, realistic pastel saturation (35% - 48%)
-        const s = 35 + Math.floor(Math.random() * 13); 
-        // Soft, cozy lightness (65% - 75%)
-        const l = 65 + Math.floor(Math.random() * 10); 
+    const COMMERCIAL_PALETTES = [
+        { name: "Stylecraft - Vintage", brand: "Stylecraft", link: "https://example.com/yarn", colors: ["#d8c1c5", "#b49b9c", "#886e70", "#e6ded2"] },
+        { name: "Paintbox - Ocean", brand: "Paintbox", link: "https://example.com/yarn", colors: ["#a1cdd8", "#6a9ca8", "#335e6a", "#e8f0f2"] },
+        { name: "Scheepjes - Spring", brand: "Scheepjes", link: "https://example.com/yarn", colors: ["#f2b9b2", "#f7d2a8", "#a6c9a2", "#fcf4e8"] },
+        { name: "Red Heart - Sunset", brand: "Red Heart", link: "https://example.com/yarn", colors: ["#e88f6a", "#d2605a", "#9a444a", "#faebd7"] },
+        { name: "Hobbii - Forest", brand: "Hobbii", link: "https://example.com/yarn", colors: ["#899b82", "#5c7352", "#3a4a33", "#dde5d9"] }
+    ];
 
-        return [
-            `hsl(${baseHue}, ${s}%, ${l}%)`,                               // 1. Base pastel color
-            `hsl(${(baseHue + 30) % 360}, ${s - 5}%, ${l + 5}%)`,          // 2. Analogous soft tone
-            `hsl(${(baseHue + 150) % 360}, ${s - 10}%, ${l - 5}%)`,         // 3. Soft complementary contrast
-            `hsl(35, 30%, 94%)`                                            // 4. Soft wool cream/off-white neutral
-        ];
+    const generateHarmoniousPalette = () => {
+        const index = Math.floor(Math.random() * COMMERCIAL_PALETTES.length);
+        return {
+            index: index,
+            colors: [...COMMERCIAL_PALETTES[index].colors]
+        };
     };
 
     // Helper to generate CSS custom properties style string for a pattern's colors
@@ -90,6 +90,8 @@
         cols: 8,
         patterns: [],
         blanketGrid: [],
+        completedSquares: new Set(),
+        workMode: false,
         nextPatternId: 0,
         history: []
     };
@@ -124,12 +126,13 @@
     // Add a pattern to our state list
     const addPatternToState = (styleKey = 'classic') => {
         const id = state.nextPatternId++;
-        const colors = generateHarmoniousPalette();
+        const palette = generateHarmoniousPalette();
         
         state.patterns.push({
             id,
             style: styleKey,
-            colors,
+            paletteIndex: palette.index,
+            colors: palette.colors,
             quantity: 0
         });
 
@@ -314,6 +317,13 @@
                 styleOptions += `<option value="${key}" ${isSelected}>${PATTERN_STYLES[key].name}</option>`;
             });
 
+            // Create Palette select options
+            let paletteOptions = '';
+            COMMERCIAL_PALETTES.forEach((pal, idx) => {
+                const isSelected = pattern.paletteIndex === idx ? 'selected' : '';
+                paletteOptions += `<option value="${idx}" ${isSelected}>${pal.name}</option>`;
+            });
+
             const colorVars = getPatternColorVariables(pattern.colors);
             const styleDetails = PATTERN_STYLES[pattern.style];
 
@@ -330,6 +340,9 @@
                 <div class="pattern-inputs-grid">
                     <select class="pattern-style-select" data-id="${pattern.id}">
                         ${styleOptions}
+                    </select>
+                    <select class="pattern-palette-select" data-id="${pattern.id}" style="margin-top: 8px;">
+                        ${paletteOptions}
                     </select>
                     <div class="pattern-qty-wrapper">
                         <span class="pattern-qty-label">Qty:</span>
@@ -359,6 +372,20 @@
                 }
             });
 
+            const paletteSelect = item.querySelector('.pattern-palette-select');
+            paletteSelect.addEventListener('change', (e) => {
+                const pId = parseInt(e.target.dataset.id);
+                const matched = state.patterns.find(p => p.id === pId);
+                if (matched) {
+                    matched.paletteIndex = parseInt(e.target.value);
+                    matched.colors = [...COMMERCIAL_PALETTES[matched.paletteIndex].colors];
+                    const previewSymbol = item.querySelector('.patternSymbol');
+                    if (previewSymbol) {
+                        previewSymbol.style = getPatternColorVariables(matched.colors);
+                    }
+                }
+            });
+
             // Quantity change should update cell calculations immediately
             const qtyInput = item.querySelector('.pattern-qty-input');
             qtyInput.addEventListener('input', () => {
@@ -381,12 +408,27 @@
     };
 
     // Generate blanket data and render it on the canvas
+    const updateWorkModeProgress = () => {
+        const progressEl = document.querySelector('#work-mode-progress');
+        if (!progressEl) return;
+        
+        const total = state.rows * state.cols;
+        const completed = state.completedSquares.size;
+        progressEl.textContent = `${completed} / ${total} squares completed`;
+    };
+
     const drawBlanketCanvas = () => {
         syncUIQuantitiesToState();
         updateDimensionsInfo();
 
         const canvas = document.querySelector('#blanket-container');
         if (!canvas) return;
+
+        // Reset work mode progress for new generation
+        state.completedSquares = new Set();
+        updateWorkModeProgress();
+        const workModeControls = document.querySelector('#work-mode-controls');
+        if (workModeControls) workModeControls.style.display = 'block';
 
         // Perform layout computation
         state.blanketGrid = solveBlanketGrid();
@@ -420,6 +462,27 @@
                 const delay = (r + c) * 15;
                 cell.style.animationDelay = `${delay}ms`;
 
+                // Work mode interaction
+                cell.dataset.row = r;
+                cell.dataset.col = c;
+                if (state.completedSquares.has(`${r}-${c}`)) {
+                    cell.classList.add('completed');
+                }
+                
+                cell.addEventListener('click', () => {
+                    if (!state.workMode) return;
+                    
+                    const key = `${r}-${c}`;
+                    if (state.completedSquares.has(key)) {
+                        state.completedSquares.delete(key);
+                        cell.classList.remove('completed');
+                    } else {
+                        state.completedSquares.add(key);
+                        cell.classList.add('completed');
+                    }
+                    updateWorkModeProgress();
+                });
+
                 row.appendChild(cell);
             }
             table.appendChild(row);
@@ -452,13 +515,22 @@
         if (overlay) overlay.classList.toggle('active', open);
     };
 
-    // Initialize history from localStorage
-    const initHistory = () => {
+    // Initialize history from IndexedDB (localforage) with migration from localStorage
+    const initHistory = async () => {
         try {
-            const localData = localStorage.getItem('blanket_local_history');
-            state.history = localData ? JSON.parse(localData) : [];
+            // Check for legacy localStorage data and migrate it
+            const legacyData = localStorage.getItem('blanket_local_history');
+            if (legacyData) {
+                const parsed = JSON.parse(legacyData);
+                await localforage.setItem('blanket_local_history', parsed);
+                localStorage.removeItem('blanket_local_history');
+            }
+
+            // Load from localforage
+            const localData = await localforage.getItem('blanket_local_history');
+            state.history = localData ? localData : [];
         } catch (e) {
-            console.error('Failed to parse local history:', e);
+            console.error('Failed to load local history:', e);
             state.history = [];
         }
         renderHistoryList();
@@ -495,7 +567,7 @@
                     seen.add(item.id);
                     return true;
                 }).slice(0, 500);
-                localStorage.setItem('blanket_local_history', JSON.stringify(state.history));
+                localforage.setItem('blanket_local_history', state.history);
                 renderHistoryList();
                 alert(`Imported ${imported.length} design(s) successfully!`);
             } catch (err) {
@@ -633,7 +705,7 @@
             state.history = state.history.slice(0, 500);
         }
         
-        localStorage.setItem('blanket_local_history', JSON.stringify(state.history));
+        localforage.setItem('blanket_local_history', state.history);
         renderHistoryList();
     };
 
@@ -684,6 +756,104 @@
         }
         
         ctx.restore();
+    };
+
+    const calculateYarnEstimate = () => {
+        if (!state.blanketGrid || state.blanketGrid.length === 0) {
+            alert('Please generate a blanket design first!');
+            return;
+        }
+
+        const yarnWeightVal = document.querySelector('#yarn-weight').value;
+        const yardsPerSquare = parseInt(yarnWeightVal); 
+        
+        const patternCounts = {};
+        for (let r = 0; r < state.rows; r++) {
+            for (let c = 0; c < state.cols; c++) {
+                const pid = state.blanketGrid[r][c];
+                patternCounts[pid] = (patternCounts[pid] || 0) + 1;
+            }
+        }
+
+        const colorYards = {};
+        Object.keys(patternCounts).forEach(pid => {
+            const p = state.patterns.find(pat => pat.id === parseInt(pid));
+            if (p) {
+                const count = patternCounts[pid];
+                const totalYardsForPattern = count * yardsPerSquare;
+                const yardsPerColor = totalYardsForPattern / p.colors.length;
+                
+                p.colors.forEach(color => {
+                    colorYards[color] = (colorYards[color] || 0) + yardsPerColor;
+                });
+            }
+        });
+
+        const resultsContainer = document.querySelector('#yarn-results');
+        resultsContainer.innerHTML = '<strong>Estimated Yarn Needed:</strong><ul>';
+        let total = 0;
+        
+        Object.keys(colorYards).forEach(color => {
+            const yards = Math.ceil(colorYards[color]);
+            const skeins = Math.ceil(yards / 200);
+            total += yards;
+            resultsContainer.innerHTML += `
+                <li>
+                    <span class="color-dot" style="background: ${color}"></span>
+                    <span>${yards} yds (${skeins} skeins)</span>
+                </li>
+            `;
+        });
+        
+        resultsContainer.innerHTML += `</ul><div class="yarn-total">Total: ${total} yards</div>`;
+        resultsContainer.style.display = 'block';
+    };
+
+    const exportPDFBlueprint = async () => {
+        if (!state.blanketGrid || state.blanketGrid.length === 0) {
+            alert('Please generate a design first!');
+            return;
+        }
+
+        if (!window.jspdf) {
+            alert('PDF Library is still loading, please wait a second.');
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = doc.internal.pageSize.getWidth();
+        
+        doc.setFontSize(22);
+        doc.text('Blanket Design Blueprint', 14, 20);
+        
+        doc.setFontSize(12);
+        doc.text(`Dimensions: ${state.rows} rows x ${state.cols} columns`, 14, 30);
+        
+        const canvas = document.querySelector('#blanket-container table');
+        if (canvas) {
+            try {
+                // Ensure table is fully rendered
+                const canvasImg = await html2canvas(canvas, { scale: 2, useCORS: true, logging: false });
+                const imgData = canvasImg.toDataURL('image/png');
+                
+                const maxWidth = pageWidth - 28;
+                let imgWidth = canvasImg.width / 4;
+                let imgHeight = canvasImg.height / 4;
+                
+                if (imgWidth > maxWidth) {
+                    const ratio = maxWidth / imgWidth;
+                    imgWidth = maxWidth;
+                    imgHeight = imgHeight * ratio;
+                }
+                
+                doc.addImage(imgData, 'PNG', 14, 40, imgWidth, imgHeight);
+                doc.save(`Blanket_Blueprint_${Date.now()}.pdf`);
+            } catch (err) {
+                console.error("PDF error:", err);
+                alert("Failed to generate PDF.");
+            }
+        }
     };
 
     const exportBlanketAsImage = () => {
@@ -890,6 +1060,22 @@
             generateBtn.addEventListener('click', drawBlanketCanvas);
         }
 
+        // Work Mode Toggle
+        const workModeToggle = document.querySelector('#work-mode-toggle');
+        if (workModeToggle) {
+            workModeToggle.addEventListener('change', (e) => {
+                state.workMode = e.target.checked;
+                const table = document.querySelector('.blanket');
+                const progressEl = document.querySelector('#work-mode-progress');
+                if (table) {
+                    table.classList.toggle('work-mode-active', state.workMode);
+                }
+                if (progressEl) {
+                    progressEl.style.display = state.workMode ? 'block' : 'none';
+                }
+            });
+        }
+
         // Settings Toggle Button
         const menuToggleBtn = document.querySelector('#menu-toggle-btn');
         if (menuToggleBtn) {
@@ -921,6 +1107,16 @@
                 importHistory(e.target.files[0]);
                 e.target.value = ''; // reset so same file can be re-imported
             });
+        }
+
+        const calcYarnBtn = document.querySelector('#calc-yarn-btn');
+        if (calcYarnBtn) {
+            calcYarnBtn.addEventListener('click', calculateYarnEstimate);
+        }
+
+        const downloadPdfBtn = document.querySelector('#download-pdf-btn');
+        if (downloadPdfBtn) {
+            downloadPdfBtn.addEventListener('click', exportPDFBlueprint);
         }
 
         // Download image floating button click
