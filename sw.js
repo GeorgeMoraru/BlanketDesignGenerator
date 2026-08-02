@@ -1,4 +1,4 @@
-const CACHE_NAME = 'blanket-generator-v16';
+const CACHE_NAME = 'blanket-generator-v17';
 const ASSETS = [
   './',
   'index.html',
