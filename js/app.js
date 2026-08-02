@@ -553,49 +553,52 @@
         progressEl.textContent = `${completed} / ${total}`;
     };
 
-    const drawBlanketCanvas = () => {
-        const rowsInput = document.querySelector('#rows');
-        const colsInput = document.querySelector('#columns');
+    const drawBlanketCanvas = (preserveGrid = false) => {
+        if (!preserveGrid) {
+            const rowsInput = document.querySelector('#rows');
+            const colsInput = document.querySelector('#columns');
 
-        if (rowsInput) {
-            const rVal = parseInt(rowsInput.value);
-            if (isNaN(rVal) || rVal < 1) {
-                rowsInput.value = 1;
-                state.rows = 1;
-            } else {
-                state.rows = rVal;
+            if (rowsInput) {
+                const rVal = parseInt(rowsInput.value);
+                if (isNaN(rVal) || rVal < 1) {
+                    rowsInput.value = 1;
+                    state.rows = 1;
+                } else {
+                    state.rows = rVal;
+                }
             }
-        }
 
-        if (colsInput) {
-            const cVal = parseInt(colsInput.value);
-            if (isNaN(cVal) || cVal < 1) {
-                colsInput.value = 1;
-                state.cols = 1;
-            } else {
-                state.cols = cVal;
+            if (colsInput) {
+                const cVal = parseInt(colsInput.value);
+                if (isNaN(cVal) || cVal < 1) {
+                    colsInput.value = 1;
+                    state.cols = 1;
+                } else {
+                    state.cols = cVal;
+                }
             }
-        }
 
-        redistributeQuantities();
-        renderPatternsList();
-        syncUIQuantitiesToState();
-        updateDimensionsInfo();
+            redistributeQuantities();
+            renderPatternsList();
+            syncUIQuantitiesToState();
+            updateDimensionsInfo();
+
+            // Reset work mode progress for new generation
+            state.completedSquares = new Set();
+            
+            // Perform layout computation
+            state.blanketGrid = solveBlanketGrid();
+        }
 
         const canvas = document.querySelector('#blanket-container');
         if (!canvas) return;
 
-        // Reset work mode progress for new generation
-        state.completedSquares = new Set();
         updateWorkModeProgress();
         const workModeControls = document.querySelector('#work-mode-controls');
         if (workModeControls) workModeControls.style.display = 'flex';
         const paintModeControls = document.querySelector('#paint-mode-controls');
         if (paintModeControls) paintModeControls.style.display = 'flex';
         updatePaintBrushOptions();
-
-        // Perform layout computation
-        state.blanketGrid = solveBlanketGrid();
 
         const bWidth = state.borderWidth || 0;
         const bColor = state.borderColor || '#27212b';
@@ -695,6 +698,47 @@
                     });
 
                     cell.appendChild(lockBtn);
+
+                    // Add drag and drop functionality
+                    cell.setAttribute('draggable', 'true');
+                    cell.addEventListener('dragstart', (e) => {
+                        if (state.paintMode || state.workMode) return;
+                        e.dataTransfer.setData('text/plain', JSON.stringify({ r: inR, c: inC }));
+                        e.dataTransfer.effectAllowed = 'move';
+                        cell.style.opacity = '0.5';
+                    });
+                    cell.addEventListener('dragend', () => {
+                        cell.style.opacity = '1';
+                    });
+                    cell.addEventListener('dragover', (e) => {
+                        if (state.paintMode || state.workMode) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                    });
+                    cell.addEventListener('drop', (e) => {
+                        if (state.paintMode || state.workMode) return;
+                        e.preventDefault();
+                        const dataStr = e.dataTransfer.getData('text/plain');
+                        if (!dataStr) return;
+                        
+                        try {
+                            const source = JSON.parse(dataStr);
+                            const srcR = source.r;
+                            const srcC = source.c;
+                            
+                            if (srcR !== inR || srcC !== inC) {
+                                // Swap pattern IDs in the grid state
+                                const temp = state.blanketGrid[srcR][srcC];
+                                state.blanketGrid[srcR][srcC] = state.blanketGrid[inR][inC];
+                                state.blanketGrid[inR][inC] = temp;
+                                
+                                // Redraw table, preserving grid state
+                                drawBlanketCanvas(true);
+                            }
+                        } catch (err) {
+                            console.error('Drop error:', err);
+                        }
+                    });
                 }
 
                 // Staggered entry animation delay
@@ -1135,21 +1179,38 @@
 
         // Add Border yarn estimate if border is present
         const bWidth = state.borderWidth || 0;
+        const bColor = state.borderColor || '#27212b';
         if (bWidth > 0) {
             const totalRows = state.rows + bWidth * 2;
             const totalCols = state.cols + bWidth * 2;
             const totalCells = totalRows * totalCols;
             const borderCellsCount = totalCells - (state.rows * state.cols);
-            const bColor = state.borderColor || '#0f172a';
             
             const totalBorderAmount = borderCellsCount * amountPerSquare;
             colorAmounts[bColor] = (colorAmounts[bColor] || 0) + totalBorderAmount;
         }
 
+        // Add Joining Yarn
+        const joinMethod = document.querySelector('#join-method')?.value || 'none';
+        let joinAmountPerEdge = 0;
+        if (joinMethod === 'whip') joinAmountPerEdge = isMetric ? 1 : 1.1;
+        if (joinMethod === 'jayg') joinAmountPerEdge = isMetric ? 1.5 : 1.6;
+        if (joinMethod === 'sc') joinAmountPerEdge = isMetric ? 2 : 2.2;
+        
+        let totalEdges = 0;
+        if (state.rows > 0 && state.cols > 0) {
+            totalEdges = (state.rows - 1) * state.cols + (state.cols - 1) * state.rows;
+        }
+        
+        const joinYarnNeeded = totalEdges * joinAmountPerEdge;
+        if (joinYarnNeeded > 0) {
+            colorAmounts[bColor] = (colorAmounts[bColor] || 0) + joinYarnNeeded;
+        }
+
         const resultsContainer = document.querySelector('#yarn-results');
         resultsContainer.innerHTML = '<strong>Estimated Yarn Needed:</strong><ul>';
         let total = 0;
-                Object.keys(colorAmounts).forEach(color => {
+        Object.keys(colorAmounts).forEach(color => {
             const amount = Math.ceil(colorAmounts[color]);
             const skeins = Math.ceil(amount / skeinSize);
             const shadeInfo = getYarnShadeInfo(color);
