@@ -1565,7 +1565,7 @@
 
         const generateBtn = document.querySelector('#generate-btn');
         if (generateBtn) {
-            generateBtn.addEventListener('click', drawBlanketCanvas);
+            generateBtn.addEventListener('click', () => drawBlanketCanvas(false));
         }
 
         // Paint Mode Toggle & Select
