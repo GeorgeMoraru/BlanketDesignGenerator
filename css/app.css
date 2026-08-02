@@ -1,21 +1,41 @@
-:root {
-    --bg-primary: #0a0f1d;
-    --bg-panel: rgba(20, 27, 47, 0.6);
-    --bg-card: rgba(30, 41, 73, 0.4);
-    --accent: #5bc0be;
-    --accent-hover: #83edea;
-    --accent-rgb: 91, 192, 190;
-    --text-primary: #f8fafc;
-    --text-secondary: #94a3b8;
-    --text-muted: #475569;
-    --border-glass: rgba(255, 255, 255, 0.06);
-    --border-glass-active: rgba(91, 192, 190, 0.3);
+:root,
+[data-theme="dark"] {
+    --bg-primary: #1a171d;
+    --bg-panel: rgba(36, 31, 41, 0.85);
+    --bg-card: rgba(48, 41, 56, 0.65);
+    --accent: #e07a5f;
+    --accent-hover: #f28f75;
+    --accent-rgb: 224, 122, 95;
+    --text-primary: #f7f4f2;
+    --text-secondary: #c4b8bb;
+    --text-muted: #85777c;
+    --border-glass: rgba(247, 244, 242, 0.1);
+    --border-glass-active: rgba(224, 122, 95, 0.4);
     --shadow-main: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
-    --shadow-glow: 0 0 20px rgba(91, 192, 190, 0.15);
+    --shadow-glow: 0 0 20px rgba(224, 122, 95, 0.2);
+    --canvas-bg: #120f14;
+    --table-bg: #27212b;
     
     --font-primary: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    
-    --cell-size: 50px;
+    --cell-size: 72px;
+}
+
+[data-theme="light"] {
+    --bg-primary: #fbf8f3;
+    --bg-panel: rgba(255, 253, 249, 0.9);
+    --bg-card: rgba(255, 255, 255, 0.95);
+    --accent: #c2593f;
+    --accent-hover: #a84830;
+    --accent-rgb: 194, 89, 63;
+    --text-primary: #2d2422;
+    --text-secondary: #6b5b57;
+    --text-muted: #9c8c87;
+    --border-glass: rgba(107, 91, 87, 0.12);
+    --border-glass-active: rgba(194, 89, 63, 0.4);
+    --shadow-main: 0 10px 30px -10px rgba(74, 53, 47, 0.12);
+    --shadow-glow: 0 0 20px rgba(194, 89, 63, 0.15);
+    --canvas-bg: #f3eee6;
+    --table-bg: #ffffff;
 }
 
 * {
@@ -79,6 +99,55 @@ body {
     background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+}
+
+.navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.work-mode-header-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border-glass-active);
+    transition: background 0.2s;
+}
+
+.work-mode-header-group:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.work-mode-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    user-select: none;
+}
+
+.work-mode-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--accent);
+}
+
+.work-mode-progress-badge {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    background: rgba(91, 192, 190, 0.15);
+    padding: 2px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(91, 192, 190, 0.3);
 }
 
 .navbar-toggle-btn {
@@ -440,7 +509,7 @@ select:focus {
 /* Canvas Blanket Container */
 .blanket-canvas {
     flex: 1;
-    background-color: #060913;
+    background-color: var(--canvas-bg);
     padding: 40px;
     display: flex;
     justify-content: center;
@@ -483,15 +552,15 @@ select:focus {
 /* Table grid styling for blanket layout */
 table.blanket {
     border-collapse: separate;
-    border-spacing: 4px;
-    background: #0f172a;
-    padding: 16px;
+    border-spacing: 6px;
+    background: var(--table-bg);
+    padding: 24px;
     border-radius: 24px;
     box-shadow: 
         0 20px 50px rgba(0, 0, 0, 0.8),
         0 0 0 1px rgba(255, 255, 255, 0.05);
-    max-width: 90vw;
-    max-height: 90vh;
+    max-width: 95vw;
+    max-height: 95vh;
     overflow: auto;
 }
 
@@ -516,6 +585,23 @@ table.blanket {
         0 8px 16px rgba(0, 0, 0, 0.6),
         0 0 0 2px var(--accent);
     z-index: 10;
+}
+
+/* Border Cells Styling */
+.cellSquare.border-cell {
+    border-radius: 8px;
+    box-shadow: 
+        inset 0 1px 0 rgba(255, 255, 255, 0.3),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+        0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.cellSquare.border-corner {
+    border-radius: 14px;
+    box-shadow: 
+        inset 0 1px 0 rgba(255, 255, 255, 0.45),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.25),
+        0 4px 8px rgba(0, 0, 0, 0.5);
 }
 
 /* Stitched crochet textile overlay texture on cells */
@@ -831,7 +917,7 @@ select {
     }
 
     :root {
-        --cell-size: 38px; /* Slightly smaller cells to fit mobile screens better */
+        --cell-size: 52px; /* Increased cell size on mobile screens */
     }
 
     .fab-btn {
@@ -907,16 +993,157 @@ select {
     position: relative;
 }
 
-.blanket-table.work-mode-active td {
+table.blanket.work-mode-active td {
     cursor: pointer;
-    transition: opacity 0.2s, transform 0.1s;
+    transition: opacity 0.2s, transform 0.15s, filter 0.2s;
 }
 
-.blanket-table.work-mode-active td:hover {
-    transform: scale(0.95);
+table.blanket.work-mode-active td:hover {
+    transform: scale(1.05);
 }
 
-.blanket-table.work-mode-active td.completed {
-    opacity: 0.25;
-    filter: grayscale(100%);
+.cellSquare.completed {
+    opacity: 0.45;
+    filter: grayscale(75%);
+    position: relative;
+}
+
+.cellSquare.completed::before {
+    content: "✓";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px;
+    height: 36px;
+    background: #10b981;
+    color: #ffffff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 900;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), 0 0 0 2px #ffffff;
+    z-index: 20;
+    pointer-events: none;
+    line-height: 1;
+}
+
+/* Cell Lock Badge & Button */
+.cellSquare {
+    position: relative;
+}
+
+.cell-lock-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 22px;
+    height: 22px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 50%;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s, background-color 0.2s;
+    z-index: 15;
+    backdrop-filter: blur(4px);
+}
+
+.cellSquare:hover .cell-lock-btn,
+.cellSquare.locked .cell-lock-btn {
+    opacity: 1;
+}
+
+.cellSquare.locked .cell-lock-btn {
+    background: var(--accent);
+    border-color: var(--accent-hover);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.cell-lock-btn:hover {
+    transform: scale(1.15);
+}
+
+.cellSquare.locked {
+    box-shadow: inset 0 0 0 3px var(--accent);
+}
+
+.btn-lock-pattern {
+    background: transparent;
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-lock-pattern:hover,
+.btn-lock-pattern.active {
+    background: rgba(224, 122, 95, 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Paint Mode Controls */
+.paint-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: all 0.2s;
+}
+
+.paint-toggle-btn.active {
+    background: var(--accent);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.paint-pattern-select {
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass-active);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 8px;
+    outline: none;
+    cursor: pointer;
+}
+
+/* Border Styles */
+.cellSquare.border-cell.border-ribbed {
+    background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.15) 6px, transparent 6px, transparent 12px);
+}
+
+.cellSquare.border-cell.border-corner-accent {
+    box-shadow: inset 0 0 0 2px var(--accent), 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+.cellSquare.border-cell.border-checker {
+    background-image: repeating-conic-gradient(rgba(0, 0, 0, 0.2) 0% 25%, transparent 0% 50%);
+    background-size: 16px 16px;
+}
+
+/* Paint Brush Cursor on Canvas */
+table.blanket.paint-mode-active td:not(.border-cell) {
+    cursor: crosshair;
 }

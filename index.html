@@ -32,9 +32,30 @@
             <svg class="logo-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
             <span class="navbar-title">Blanket Designer</span>
         </div>
-        <button id="menu-toggle-btn" class="navbar-toggle-btn" aria-label="Open settings">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-        </button>
+        <div class="navbar-actions">
+            <div id="paint-mode-controls" class="work-mode-header-group" style="display:none;">
+                <button id="paint-mode-toggle-btn" class="paint-toggle-btn" title="Paint Tool: Click grid cells to assign active pattern brush" aria-label="Toggle Paint Mode">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.5 7.5"></path></svg>
+                    <span>Paint</span>
+                </button>
+                <select id="paint-active-pattern" class="paint-pattern-select" title="Active Pattern Brush" style="display:none;">
+                </select>
+            </div>
+            <div id="work-mode-controls" class="work-mode-header-group" style="display:none;">
+                <label class="work-mode-label" title="Track progress by clicking completed squares">
+                    <input type="checkbox" id="work-mode-toggle" class="work-mode-checkbox">
+                    <span>Work Mode</span>
+                </label>
+                <span id="work-mode-progress" class="work-mode-progress-badge" style="display:none;">0 / 0</span>
+            </div>
+            <button id="theme-toggle-btn" class="navbar-toggle-btn" aria-label="Toggle theme" title="Toggle theme">
+                <svg id="theme-icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                <svg id="theme-icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+            </button>
+            <button id="menu-toggle-btn" class="navbar-toggle-btn" aria-label="Open menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+        </div>
     </header>
 
     <main class="wrapper">
@@ -60,8 +81,41 @@
                     </div>
                 </div>
 
+                <div class="setting-group">
+                    <label for="border-width">Border Rows</label>
+                    <select id="border-width">
+                        <option value="0">No Border</option>
+                        <option value="1" selected>1 Row Border</option>
+                        <option value="2">2 Rows Border</option>
+                    </select>
+                </div>
+
+                <div class="setting-group" id="border-style-group">
+                    <label for="border-style">Border Style</label>
+                    <select id="border-style">
+                        <option value="solid" selected>Solid Edge</option>
+                        <option value="ribbed">Ribbed Stripes</option>
+                        <option value="corner-accent">Corner Accent</option>
+                        <option value="checker">Dual-Tone Checker</option>
+                    </select>
+                </div>
+
+                <div class="setting-group" id="border-color-group">
+                    <label for="border-color">Border Color</label>
+                    <select id="border-color">
+                        <option value="#27212b" selected>Walnut Espresso</option>
+                        <option value="#f8fafc">Cream / Off-White</option>
+                        <option value="#475569">Charcoal Gray</option>
+                        <option value="#f59e0b">Warm Gold</option>
+                        <option value="#e11d48">Deep Rose</option>
+                        <option value="#059669">Forest Sage</option>
+                        <option value="#2563eb">Royal Blue</option>
+                        <option value="#7c3aed">Amethyst Purple</option>
+                    </select>
+                </div>
+
                 <div class="patterns-title-row">
-                    <h2>Color Patterns</h2>
+                    <h2>Patterns</h2>
                     <span class="total-cells-badge" id="cell-count-badge">64 cells</span>
                 </div>
 
@@ -84,11 +138,18 @@
                     <h2>Yarn Estimator</h2>
                 </div>
                 <div class="setting-group">
+                    <label for="yarn-unit">Unit System</label>
+                    <select id="yarn-unit">
+                        <option value="metric" selected>Metric (Meters)</option>
+                        <option value="imperial">Imperial (Yards)</option>
+                    </select>
+                </div>
+                <div class="setting-group">
                     <label for="yarn-weight">Yarn Weight</label>
                     <select id="yarn-weight">
-                        <option value="120">DK / Light Worsted (~120 yds/sq)</option>
-                        <option value="150">Worsted / Aran (~150 yds/sq)</option>
-                        <option value="180">Chunky / Bulky (~180 yds/sq)</option>
+                        <option value="110">DK / Light Worsted (~110 m/sq)</option>
+                        <option value="140" selected>Worsted / Aran (~140 m/sq)</option>
+                        <option value="165">Chunky / Bulky (~165 m/sq)</option>
                     </select>
                 </div>
                 <div class="setting-group">
@@ -140,14 +201,7 @@
                 </div>
             </div>
 
-            <!-- Work Mode Controls -->
-            <div id="work-mode-controls" style="display:none; position:absolute; top: 16px; right: 16px; background: var(--surface); padding: 8px 16px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); border: 1px solid var(--border); z-index: 10;">
-                <label style="display:flex; align-items:center; gap: 8px; cursor:pointer; font-weight: 500;">
-                    <input type="checkbox" id="work-mode-toggle" style="width: 18px; height: 18px; cursor: pointer;">
-                    Work Mode (Track Progress)
-                </label>
-                <div id="work-mode-progress" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; display:none;">0 / 0 squares completed</div>
-            </div>
+
             <!-- Floating action button to download canvas as image -->
             <div class="fab-group">
                 <button id="download-pdf-btn" class="fab-btn premium-btn" title="Export PDF Blueprint">
