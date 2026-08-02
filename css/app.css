@@ -568,6 +568,8 @@ table.blanket {
 .cellSquare {
     width: var(--cell-size);
     height: var(--cell-size);
+    min-width: var(--cell-size);
+    min-height: var(--cell-size);
     border-radius: 8px;
     position: relative;
     overflow: hidden;
