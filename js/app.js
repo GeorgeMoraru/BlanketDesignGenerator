@@ -1509,6 +1509,42 @@
         link.href = canvas.toDataURL('image/png');
         link.click();
     };
+    const populateBorderColorDropdown = () => {
+        const bColorSelect = document.querySelector('#border-color');
+        if (!bColorSelect) return;
+        bColorSelect.innerHTML = '';
+        
+        const neutralsGroup = document.createElement('optgroup');
+        neutralsGroup.label = "Neutral Basics";
+        const n1 = document.createElement('option');
+        n1.value = "#27212b";
+        n1.textContent = "Walnut Espresso (Default)";
+        neutralsGroup.appendChild(n1);
+        const n2 = document.createElement('option');
+        n2.value = "#f8fafc";
+        n2.textContent = "Cream / Off-White";
+        neutralsGroup.appendChild(n2);
+        bColorSelect.appendChild(neutralsGroup);
+        
+        COMMERCIAL_PALETTES.forEach(pal => {
+            const group = document.createElement('optgroup');
+            group.label = pal.name;
+            pal.colors.forEach((hex, i) => {
+                const opt = document.createElement('option');
+                opt.value = hex;
+                opt.textContent = pal.shades[i];
+                group.appendChild(opt);
+            });
+            bColorSelect.appendChild(group);
+        });
+        
+        // Restore saved state if valid
+        if (state.borderColor) {
+            bColorSelect.value = state.borderColor;
+        } else {
+            bColorSelect.value = '#27212b';
+        }
+    };
 
     // =========================================================================
     // 8. Event Bindings Setup
@@ -1701,6 +1737,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         initTheme();
         initDefaultState();
+        populateBorderColorDropdown();
         renderPatternsList();
         updateDimensionsInfo();
         initHistory();
