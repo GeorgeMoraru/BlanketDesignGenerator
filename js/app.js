@@ -2467,7 +2467,6 @@
 
         const gatewayScreen = document.querySelector('#login-gateway-screen');
         const gatewayLoginBtn = document.querySelector('#gateway-google-login-btn');
-        const gatewayGuestBtn = document.querySelector('#gateway-guest-btn');
 
         const loginBtn = document.querySelector('#google-login-btn');
         const logoutBtn = document.querySelector('#google-logout-btn');
@@ -2486,12 +2485,6 @@
 
         if (loginBtn) loginBtn.addEventListener('click', handleGoogleLogin);
         if (gatewayLoginBtn) gatewayLoginBtn.addEventListener('click', handleGoogleLogin);
-
-        if (gatewayGuestBtn) {
-            gatewayGuestBtn.addEventListener('click', () => {
-                if (gatewayScreen) gatewayScreen.classList.add('hidden');
-            });
-        }
 
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async () => {
