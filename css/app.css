@@ -174,10 +174,41 @@ body {
 
 .wrapper {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     height: calc(100vh - 56px);
     overflow: hidden;
     position: relative;
+}
+
+/* Primary Left Design Controls Sidebar */
+.design-sidebar {
+    width: 360px;
+    min-width: 320px;
+    height: 100%;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    overflow-y: auto;
+    z-index: 10;
+}
+
+@media (max-width: 768px) {
+    .wrapper {
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    .design-sidebar {
+        width: 100%;
+        min-width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-glass);
+    }
 }
 
 /* Sidebar Design (Drawer sliding from right) */
