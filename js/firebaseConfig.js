@@ -21,44 +21,63 @@
     let db = null;
 
     const initFirebase = () => {
+        if (auth && db) return true;
         if (typeof firebase !== 'undefined') {
-            if (!firebase.apps.length) {
-                app = firebase.initializeApp(firebaseConfig);
-            } else {
-                app = firebase.app();
-            }
-            auth = firebase.auth();
-            db = firebase.firestore();
-            
-            // Set persistence to LOCAL
-            auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {
-                console.warn('[Firebase Auth] Persistence error:', err);
-            });
+            try {
+                if (!firebase.apps.length) {
+                    app = firebase.initializeApp(firebaseConfig);
+                } else {
+                    app = firebase.app();
+                }
+                auth = firebase.auth();
+                db = firebase.firestore();
+                
+                // Set persistence to LOCAL
+                auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(err => {
+                    console.warn('[Firebase Auth] Persistence error:', err);
+                });
 
-            // Process redirect result if returning from signInWithRedirect
-            auth.getRedirectResult().then(result => {
-                if (result && result.user) {
-                    console.log('[Firebase Auth] Signed in via redirect:', result.user.displayName);
-                }
-            }).catch(err => {
-                console.error('[Firebase Auth] Redirect result error:', err.code, err.message);
-                if (err.code === 'auth/unauthorized-domain') {
-                    alert(`Firebase Auth Error (unauthorized-domain):\nThe domain "${window.location.hostname}" is not authorized in your Firebase Console.\n\nPlease add "${window.location.hostname}" under Firebase Console -> Authentication -> Settings -> Authorized Domains.`);
-                } else if (err.code && err.code !== 'auth/popup-closed-by-user') {
-                    alert(`Firebase Auth Error (${err.code}):\n${err.message}`);
-                }
-            });
-            console.log('[Firebase] Initialized successfully with project:', firebaseConfig.projectId);
+                // Process redirect result if returning from signInWithRedirect
+                auth.getRedirectResult().then(result => {
+                    if (result && result.user) {
+                        console.log('[Firebase Auth] Signed in via redirect:', result.user.displayName);
+                    }
+                }).catch(err => {
+                    console.error('[Firebase Auth] Redirect result error:', err.code, err.message);
+                    if (err.code === 'auth/unauthorized-domain') {
+                        alert(`Firebase Auth Error (unauthorized-domain):\nThe domain "${window.location.hostname}" is not authorized in your Firebase Console.\n\nPlease add "${window.location.hostname}" under Firebase Console -> Authentication -> Settings -> Authorized Domains.`);
+                    } else if (err.code && err.code !== 'auth/popup-closed-by-user') {
+                        alert(`Firebase Auth Error (${err.code}):\n${err.message}`);
+                    }
+                });
+                console.log('[Firebase] Initialized successfully with project:', firebaseConfig.projectId);
+                return true;
+            } catch (e) {
+                console.error('[Firebase Init Error]:', e);
+                return false;
+            }
         } else {
-            console.warn('[Firebase] Firebase SDK not loaded.');
+            console.warn('[Firebase] window.firebase SDK not yet available.');
+            return false;
         }
     };
 
     // Google Sign-In helper with explicit error diagnostics & fallback
     const loginWithGoogle = async () => {
         if (!auth) initFirebase();
+
+        // If CDN script load was slightly delayed, poll for up to 3 seconds
+        if (!auth && typeof firebase === 'undefined') {
+            let polls = 0;
+            while (typeof firebase === 'undefined' && polls < 30) {
+                await new Promise(res => setTimeout(res, 100));
+                polls++;
+            }
+            initFirebase();
+        }
+
         if (!auth) {
-            alert('Firebase SDK is not initialized. Please refresh the page.');
+            alert('Firebase SDK is not available. Please check your internet connection or browser ad-blocker settings and refresh.');
             return;
         }
         const provider = new firebase.auth.GoogleAuthProvider();
