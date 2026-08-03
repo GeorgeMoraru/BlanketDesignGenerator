@@ -41,9 +41,11 @@
                     console.log('[Firebase Auth] Signed in via redirect:', result.user.displayName);
                 }
             }).catch(err => {
-                console.warn('[Firebase Auth] Redirect result error:', err.code, err.message);
+                console.error('[Firebase Auth] Redirect result error:', err.code, err.message);
                 if (err.code === 'auth/unauthorized-domain') {
-                    alert(`Firebase Auth Error: The domain "${window.location.hostname}" is not authorized in your Firebase Console.\n\nPlease add "${window.location.hostname}" under Firebase Console -> Authentication -> Settings -> Authorized Domains.`);
+                    alert(`Firebase Auth Error (unauthorized-domain):\nThe domain "${window.location.hostname}" is not authorized in your Firebase Console.\n\nPlease add "${window.location.hostname}" under Firebase Console -> Authentication -> Settings -> Authorized Domains.`);
+                } else if (err.code && err.code !== 'auth/popup-closed-by-user') {
+                    alert(`Firebase Auth Error (${err.code}):\n${err.message}`);
                 }
             });
             console.log('[Firebase] Initialized successfully with project:', firebaseConfig.projectId);
@@ -52,31 +54,40 @@
         }
     };
 
-    // Google Sign-In helper with robust popup/redirect fallback
-    const loginWithGoogle = async (useRedirect = false) => {
+    // Google Sign-In helper with explicit error diagnostics & fallback
+    const loginWithGoogle = async () => {
         if (!auth) initFirebase();
-        if (!auth) throw new Error('Firebase Auth not available');
+        if (!auth) {
+            alert('Firebase SDK is not initialized. Please refresh the page.');
+            return;
+        }
         const provider = new firebase.auth.GoogleAuthProvider();
-        provider.addScope('profile');
-        provider.addScope('email');
         provider.setCustomParameters({ prompt: 'select_account' });
 
-        if (useRedirect || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-            console.log('[Google Login] Initiating signInWithRedirect...');
-            return await auth.signInWithRedirect(provider);
-        }
-
         try {
-            return await auth.signInWithPopup(provider);
+            const result = await auth.signInWithPopup(provider);
+            return result;
         } catch (err) {
-            console.warn('[Google Login] signInWithPopup failed:', err.code, err.message);
+            console.warn('[Google Login] signInWithPopup error:', err.code, err.message);
             if (err.code === 'auth/unauthorized-domain') {
-                alert(`Firebase Auth Error: The domain "${window.location.hostname}" is not authorized in your Firebase Console.\n\nPlease add "${window.location.hostname}" under Firebase Console -> Authentication -> Settings -> Authorized Domains.`);
+                alert(`Firebase Auth Error (unauthorized-domain):\nThe domain "${window.location.hostname}" is not authorized in your Firebase Console.\n\nPlease add "${window.location.hostname}" under Firebase Console -> Authentication -> Settings -> Authorized Domains.`);
                 throw err;
             }
-            // Fallback to redirect if popup fails or gets blocked
-            console.log('[Google Login] Popup failed or blocked, falling back to signInWithRedirect...');
-            return await auth.signInWithRedirect(provider);
+            if (err.code === 'auth/operation-not-allowed') {
+                alert(`Firebase Auth Error (operation-not-allowed):\nGoogle Sign-In is disabled in your Firebase Console.\n\nPlease go to Firebase Console -> Authentication -> Sign-in method -> Google and enable it.`);
+                throw err;
+            }
+            if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+                console.log('[Google Login] Popup blocked/closed, falling back to signInWithRedirect...');
+                try {
+                    return await auth.signInWithRedirect(provider);
+                } catch (redErr) {
+                    alert(`Google Sign-In Redirect Error (${redErr.code}):\n${redErr.message}`);
+                    throw redErr;
+                }
+            }
+            alert(`Google Sign-In Error (${err.code}):\n${err.message}`);
+            throw err;
         }
     };
 
