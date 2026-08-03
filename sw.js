@@ -1,4 +1,4 @@
-const CACHE_NAME = 'blanket-generator-v35';
+const CACHE_NAME = 'blanket-generator-v36';
 const ASSETS = [
   './',
   'index.html',
@@ -36,27 +36,31 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Event - cache first, fallback to network with runtime caching for fonts & CDNs
+// Fetch Event - Network-First for HTML documents, Cache-First for static assets
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Handle local assets and trusted CDNs/Fonts
   const isSameOrigin = url.origin === self.location.origin;
   const isTrustedCdn = url.hostname.includes('fonts.googleapis.com') ||
                        url.hostname.includes('fonts.gstatic.com') ||
+                       url.hostname.includes('www.gstatic.com') ||
                        url.hostname.includes('unpkg.com') ||
-                       url.hostname.includes('cdnjs.cloudflare.com');
+                       url.hostname.includes('cdnjs.cloudflare.com') ||
+                       url.hostname.includes('firebaseapp.com');
 
   if (!isSameOrigin && !isTrustedCdn) {
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
+  const isHTMLRequest = event.request.mode === 'navigate' || 
+                        url.pathname.endsWith('.html') || 
+                        url.pathname === '/' || 
+                        url.pathname.endsWith('/');
+
+  if (isHTMLRequest) {
+    // Network-First for HTML navigation to guarantee newest scripts & index.html
+    event.respondWith(
+      fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -65,8 +69,26 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(() => {
-        return cachedResponse;
-      });
-    })
-  );
+        return caches.match(event.request);
+      })
+    );
+  } else {
+    // Cache-First for static assets (js, css, images) with network fallback
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseClone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone);
+            });
+          }
+          return networkResponse;
+        });
+      })
+    );
+  }
 });
