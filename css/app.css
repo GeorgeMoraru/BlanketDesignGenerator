@@ -200,14 +200,20 @@ body {
 @media (max-width: 768px) {
     .wrapper {
         flex-direction: column;
+        height: calc(100vh - 56px);
+        height: calc(100dvh - 56px);
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
     }
     .design-sidebar {
         width: 100%;
         min-width: 100%;
-        height: auto;
+        max-height: 55vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
         border-right: none;
         border-bottom: 1px solid var(--border-glass);
+        padding: 16px 16px 24px 16px;
     }
 }
 
@@ -929,36 +935,32 @@ select {
     }
 
     .settings-container {
-        width: 300px;
-        right: -300px;
-        padding: 20px 16px;
+        width: 100vw;
+        max-width: 100vw;
+        right: -100vw;
+        height: 100vh;
+        height: 100dvh;
+        padding: 20px 16px 120px 16px;
+        -webkit-overflow-scrolling: touch;
+        z-index: 1000;
     }
 
     .settings-container.open {
-        transform: translateX(-300px);
+        transform: translateX(-100vw);
     }
 
     .blanket-canvas {
-        padding: 24px 12px;
+        padding: 16px 12px;
+        min-height: 45vh;
     }
 
     .canvas-inner {
-        display: block;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        padding: 10px 0;
-    }
-
-    table.blanket {
-        margin: 0 auto;
-        max-width: none;
-        padding: 12px;
-        border-radius: 16px;
-    }
-
-    :root {
-        --cell-size: 52px; /* Increased cell size on mobile screens */
+        height: 100%;
+        overflow: hidden;
     }
 
     .fab-btn {
