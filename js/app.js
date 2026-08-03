@@ -111,6 +111,10 @@
         }
     };
 
+    const getPatternStyleDetails = (style) => {
+        return PATTERN_STYLES[style] || PATTERN_STYLES.classic;
+    };
+
     // =========================================================================
     // 3. Color Utilities (Cozy Pastel HSL Palette Generator)
     // =========================================================================
@@ -195,7 +199,9 @@
         paintMode: false,
         activeBrushPatternId: 0,
         nextPatternId: 0,
-        history: []
+        history: [],
+        currentUser: null,
+        unsubscribeCloudSync: null
     };
 
     // Initialize state with default configuration
@@ -596,7 +602,7 @@
             const patId = state.blanketGrid[touchDragState.srcR][touchDragState.srcC];
             const pattern = state.patterns.find(p => p.id === patId);
             if (pattern) {
-                const styleDetails = PATTERN_STYLES[pattern.style];
+                const styleDetails = getPatternStyleDetails(pattern.style);
                 ghost.classList.add(styleDetails.className);
                 ghost.style = getPatternColorVariables(pattern.colors);
             }
@@ -911,6 +917,11 @@
         const container = document.querySelector('#patterns-list');
         if (!container) return;
 
+        if (!state.patterns || state.patterns.length === 0) {
+            addPatternToState('classic');
+            addPatternToState('flower');
+        }
+
         container.innerHTML = '';
 
         state.patterns.forEach((pattern, index) => {
@@ -933,7 +944,7 @@
             });
 
             const colorVars = getPatternColorVariables(pattern.colors);
-            const styleDetails = PATTERN_STYLES[pattern.style];
+            const styleDetails = getPatternStyleDetails(pattern.style);
 
             item.innerHTML = `
                 <div class="pattern-item-header">
@@ -980,7 +991,7 @@
                             previewSymbol.classList.remove(style.className);
                         });
                         // Add new
-                        previewSymbol.classList.add(PATTERN_STYLES[matched.style].className);
+                        previewSymbol.classList.add(getPatternStyleDetails(matched.style).className);
                     }
                 }
             });
@@ -1099,6 +1110,11 @@
                 }
             }
 
+            if (!state.patterns || state.patterns.length === 0) {
+                addPatternToState('classic');
+                addPatternToState('flower');
+            }
+
             redistributeQuantities();
             renderPatternsList();
             syncUIQuantitiesToState();
@@ -1130,6 +1146,7 @@
         const totalCols = innerCols + bWidth * 2;
 
         // Create table grid element
+        const table = document.createElement('table');
         table.className = `blanket grid-${state.geometry || 'square'}`;
         if (state.workMode) {
             table.classList.add('work-mode-active');
@@ -1192,7 +1209,7 @@
                     const pattern = state.patterns.find(p => p.id === patternId);
 
                     if (pattern) {
-                        const styleDetails = PATTERN_STYLES[pattern.style];
+                        const styleDetails = getPatternStyleDetails(pattern.style);
                         cell.classList.add(styleDetails.className);
                         cell.style = getPatternColorVariables(pattern.colors);
                     } else {
@@ -1303,7 +1320,7 @@
                             const pattern = state.patterns.find(p => p.id === pId);
                             Object.values(PATTERN_STYLES).forEach(s => cell.classList.remove(s.className));
                             if (pattern) {
-                                cell.classList.add(PATTERN_STYLES[pattern.style].className);
+                                cell.classList.add(getPatternStyleDetails(pattern.style).className);
                                 cell.style = getPatternColorVariables(pattern.colors);
                             }
                             cell.classList.add('locked');
@@ -1389,87 +1406,6 @@
         renderHistoryList();
     };
 
-    // Export history as a downloadable JSON file
-    const exportHistory = () => {
-        if (state.history.length === 0) {
-            alert('No designs saved yet. Generate a design first!');
-            return;
-        }
-        const json = JSON.stringify(state.history, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const link = document.createElement('a');
-        link.download = `blanket-history-${Date.now()}.json`;
-        link.href = URL.createObjectURL(blob);
-        link.click();
-        URL.revokeObjectURL(link.href);
-    };
-
-    // Import history from a JSON file
-    const importHistory = (file) => {
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const imported = JSON.parse(e.target.result);
-                if (!Array.isArray(imported)) throw new Error('Invalid format');
-                
-                // Sanitize imported structure to avoid XSS and invalid types
-                const sanitizedImported = imported.filter(item => item && typeof item === 'object').map(item => {
-                    const id = (typeof item.id === 'string' || typeof item.id === 'number') ? item.id : Date.now() + Math.random();
-                    const rows = sanitizeInt(item.rows, 8, 1, 100);
-                    const cols = sanitizeInt(item.cols, 8, 1, 100);
-                    const borderWidth = sanitizeInt(item.borderWidth, 1, 0, 20);
-                    const borderColor = sanitizeHexColor(item.borderColor);
-                    const timestamp = typeof item.timestamp === 'number' ? item.timestamp : Date.now();
-                    const patterns = Array.isArray(item.patterns) ? item.patterns.map(p => ({
-                        id: sanitizeInt(p.id, 0, 0, 10000),
-                        style: typeof p.style === 'string' ? escapeHtml(p.style) : 'classic',
-                        paletteIndex: sanitizeInt(p.paletteIndex, 0, 0, 100),
-                        colors: Array.isArray(p.colors) ? p.colors.map(c => sanitizeHexColor(c)) : ['#ffffff'],
-                        quantity: sanitizeInt(p.quantity, 1, 0, 10000),
-                        isLocked: Boolean(p.isLocked)
-                    })) : [];
-
-                    return {
-                        id,
-                        rows,
-                        cols,
-                        borderWidth,
-                        borderColor,
-                        timestamp,
-                        patterns,
-                        grid: Array.isArray(item.grid) ? item.grid : [],
-                        lockedCells: Array.isArray(item.lockedCells) ? item.lockedCells : []
-                    };
-                });
-
-                // Bump nextPatternId to prevent ID collision with newly added patterns
-                let maxId = state.nextPatternId || 0;
-                sanitizedImported.forEach(item => {
-                    item.patterns.forEach(p => {
-                        if (p.id >= maxId) maxId = p.id + 1;
-                    });
-                });
-                state.nextPatternId = maxId;
-
-                // Merge imported with existing, deduplicate by id, keep newest 500
-                const merged = [...sanitizedImported, ...state.history];
-                const seen = new Set();
-                state.history = merged.filter(item => {
-                    if (seen.has(item.id)) return false;
-                    seen.add(item.id);
-                    return true;
-                }).slice(0, 500);
-                
-                localforage.setItem('blanket_local_history', state.history).catch(err => console.warn(err));
-                renderHistoryList();
-                alert(`Imported ${sanitizedImported.length} design(s) successfully!`);
-            } catch (err) {
-                alert('Failed to import: invalid JSON file format.');
-            }
-        };
-        reader.readAsText(file);
-    };
 
     const renderHistoryList = () => {
         const listContainer = document.querySelector('#history-list');
@@ -1515,15 +1451,25 @@
             historyItem.innerHTML = `
                 <div class="history-item-header">
                     <span class="history-item-time">${escapeHtml(dateStr)}</span>
-                    <span class="history-item-size">${safeRows}×${safeCols}</span>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span class="history-item-size">${safeRows}×${safeCols}</span>
+                        <button class="btn-delete-history btn-delete" data-id="${item.id}" title="Remove design" style="padding: 2px 4px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="history-preview-bar">
                     ${swatchesHtml}
                 </div>
             `;
             
-            historyItem.addEventListener('click', () => {
-                restoreDesign(item.id);
+            historyItem.addEventListener('click', (e) => {
+                if (e.target.closest('.btn-delete-history')) {
+                    e.stopPropagation();
+                    deleteHistoryItem(item.id);
+                } else {
+                    restoreDesign(item.id);
+                }
             });
             
             listContainer.appendChild(historyItem);
@@ -1603,7 +1549,7 @@
                         const pattern = state.patterns.find(p => p.id === patternId);
                         
                         if (pattern) {
-                            const styleDetails = PATTERN_STYLES[pattern.style];
+                            const styleDetails = getPatternStyleDetails(pattern.style);
                             cell.classList.add(styleDetails.className);
                             cell.style = getPatternColorVariables(pattern.colors);
                         } else {
@@ -1633,6 +1579,15 @@
         toggleDrawer(false);
     };
 
+    const deleteHistoryItem = (id) => {
+        state.history = state.history.filter(h => h.id !== id);
+        localforage.setItem('blanket_local_history', state.history);
+        renderHistoryList();
+        if (state.currentUser && window.FirebaseAuthSync) {
+            window.FirebaseAuthSync.deleteDesignFromCloud(state.currentUser.uid, id);
+        }
+    };
+
     const appendToHistory = () => {
         const entry = {
             id: `design_${Date.now()}`,
@@ -1654,6 +1609,10 @@
         
         localforage.setItem('blanket_local_history', state.history);
         renderHistoryList();
+
+        if (state.currentUser && window.FirebaseAuthSync) {
+            window.FirebaseAuthSync.saveDesignToCloud(state.currentUser.uid, entry);
+        }
     };
 
 
@@ -2269,11 +2228,12 @@
             });
         }
 
-        // Work Mode Toggle
-        const workModeToggle = document.querySelector('#work-mode-toggle');
-        if (workModeToggle) {
-            workModeToggle.addEventListener('change', (e) => {
-                state.workMode = e.target.checked;
+        // Work Mode Toggle Button
+        const workModeToggleBtn = document.querySelector('#work-mode-toggle-btn');
+        if (workModeToggleBtn) {
+            workModeToggleBtn.addEventListener('click', () => {
+                state.workMode = !state.workMode;
+                workModeToggleBtn.classList.toggle('active', state.workMode);
                 const table = document.querySelector('.blanket');
                 const progressEl = document.querySelector('#work-mode-progress');
                 if (table) {
@@ -2303,20 +2263,6 @@
             menuOverlay.addEventListener('click', () => toggleDrawer(false));
         }
 
-        // Export history as JSON
-        const exportBtn = document.querySelector('#export-history-btn');
-        if (exportBtn) {
-            exportBtn.addEventListener('click', exportHistory);
-        }
-
-        // Import history from JSON file
-        const importInput = document.querySelector('#import-history-input');
-        if (importInput) {
-            importInput.addEventListener('change', (e) => {
-                importHistory(e.target.files[0]);
-                e.target.value = ''; // reset so same file can be re-imported
-            });
-        }
 
         // Motif Geometry Shape Selector
         const geomSelect = document.querySelector('#geometry-shape');
@@ -2475,7 +2421,7 @@
                             color: sanitizeHexColor(l.color)
                         }));
                     }
-                    if (Array.isArray(decoded.patterns)) {
+                    if (Array.isArray(decoded.patterns) && decoded.patterns.length > 0) {
                         state.patterns = decoded.patterns.map(p => ({
                             id: sanitizeInt(p.id, 0, 0, 10000),
                             style: typeof p.style === 'string' ? escapeHtml(p.style) : 'classic',
@@ -2514,10 +2460,101 @@
         applyTheme(savedTheme);
     };
 
+    const initFirebaseAuthSync = () => {
+        if (!window.FirebaseAuthSync) return;
+
+        const gatewayScreen = document.querySelector('#login-gateway-screen');
+        const gatewayLoginBtn = document.querySelector('#gateway-google-login-btn');
+        const gatewayGuestBtn = document.querySelector('#gateway-guest-btn');
+
+        const loginBtn = document.querySelector('#google-login-btn');
+        const logoutBtn = document.querySelector('#google-logout-btn');
+        const userProfile = document.querySelector('#google-user-profile');
+        const userName = document.querySelector('#google-user-name');
+        const userAvatar = document.querySelector('#google-user-avatar');
+        const syncStatus = document.querySelector('#google-sync-status');
+
+        const handleGoogleLogin = async () => {
+            try {
+                await window.FirebaseAuthSync.loginWithGoogle();
+            } catch (err) {
+                console.error('[Google Login Error]:', err);
+            }
+        };
+
+        if (loginBtn) loginBtn.addEventListener('click', handleGoogleLogin);
+        if (gatewayLoginBtn) gatewayLoginBtn.addEventListener('click', handleGoogleLogin);
+
+        if (gatewayGuestBtn) {
+            gatewayGuestBtn.addEventListener('click', () => {
+                if (gatewayScreen) gatewayScreen.classList.add('hidden');
+            });
+        }
+
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    if (state.unsubscribeCloudSync) {
+                        state.unsubscribeCloudSync();
+                        state.unsubscribeCloudSync = null;
+                    }
+                    await window.FirebaseAuthSync.logoutGoogle();
+                    if (gatewayScreen) gatewayScreen.classList.remove('hidden');
+                } catch (err) {
+                    console.error('[Google Logout Error]:', err);
+                }
+            });
+        }
+
+        window.FirebaseAuthSync.onAuthChange((user) => {
+            state.currentUser = user;
+            if (user) {
+                if (gatewayScreen) gatewayScreen.classList.add('hidden');
+                if (loginBtn) loginBtn.style.display = 'none';
+                if (userProfile) userProfile.style.display = 'flex';
+                if (userName) userName.textContent = user.displayName || user.email || 'Google User';
+                if (userAvatar) userAvatar.src = user.photoURL || 'https://www.gstatic.com/images/branding/product/1x/avatar_square_blue_512dp.png';
+                if (syncStatus) syncStatus.textContent = 'Cloud Sync Active';
+
+                // Sync offline local history to cloud upon login
+                if (state.history && state.history.length > 0) {
+                    state.history.forEach(design => {
+                        window.FirebaseAuthSync.saveDesignToCloud(user.uid, design);
+                    });
+                }
+
+                // Subscribe to cloud Firestore designs
+                if (state.unsubscribeCloudSync) state.unsubscribeCloudSync();
+                state.unsubscribeCloudSync = window.FirebaseAuthSync.subscribeCloudDesigns(user.uid, (cloudDesigns) => {
+                    if (cloudDesigns && Array.isArray(cloudDesigns)) {
+                        const mergedMap = new Map();
+                        [...cloudDesigns, ...state.history].forEach(item => {
+                            if (item && item.id) {
+                                if (!mergedMap.has(item.id)) {
+                                    mergedMap.set(item.id, item);
+                                }
+                            }
+                        });
+                        state.history = Array.from(mergedMap.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)).slice(0, 500);
+                        localforage.setItem('blanket_local_history', state.history);
+                        renderHistoryList();
+                    }
+                });
+            } else {
+                if (loginBtn) loginBtn.style.display = 'flex';
+                if (userProfile) userProfile.style.display = 'none';
+                if (state.unsubscribeCloudSync) {
+                    state.unsubscribeCloudSync();
+                    state.unsubscribeCloudSync = null;
+                }
+            }
+        });
+    };
+
     // =========================================================================
     // 9. Application Bootstrap
     // =========================================================================
-    document.addEventListener('DOMContentLoaded', () => {
+    const initApp = () => {
         initTheme();
         initDefaultState();
         populateBorderColorDropdown();
@@ -2526,7 +2563,14 @@
         updateDimensionsInfo();
         initHistory();
         bindEvents();
+        initFirebaseAuthSync();
         loadPatternFromUrlHash();
-    });
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initApp);
+    } else {
+        initApp();
+    }
 
 })();

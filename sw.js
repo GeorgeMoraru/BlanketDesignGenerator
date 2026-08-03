@@ -1,9 +1,10 @@
-const CACHE_NAME = 'blanket-generator-v19';
+const CACHE_NAME = 'blanket-generator-v29';
 const ASSETS = [
   './',
   'index.html',
   'css/app.css',
   'js/app.js',
+  'js/firebaseConfig.js',
   'js/nativeBridge.js',
   'manifest.json',
   'icons/icon.svg'
