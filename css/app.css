@@ -1149,3 +1149,325 @@ table.blanket.work-mode-active td:hover {
 table.blanket.paint-mode-active td:not(.border-cell) {
     cursor: crosshair;
 }
+
+/* Multi-Layer Border Designer UI */
+.border-designer-section {
+    background: rgba(15, 23, 42, 0.35);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 16px;
+}
+
+.border-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.border-section-header label {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.btn-sm {
+    padding: 4px 10px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
+.border-layers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.border-layer-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.border-layer-item:hover {
+    border-color: var(--border-glass-active);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.border-layer-num {
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--accent);
+    min-width: 16px;
+}
+
+.border-layer-stitch {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    border-radius: 6px;
+    padding: 3px 6px;
+    font-size: 11px;
+}
+
+.border-layer-color-picker {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    padding: 0;
+    background: transparent;
+}
+
+.border-layer-color-picker::-webkit-color-swatch-wrapper {
+    padding: 0;
+}
+
+.border-layer-color-picker::-webkit-color-swatch {
+    border: none;
+    border-radius: 5px;
+}
+
+.btn-remove-layer {
+    background: transparent;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.btn-remove-layer:hover {
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.preset-input-row {
+    display: flex;
+    gap: 6px;
+}
+
+.preset-input-row select {
+    flex: 1;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--bg-card);
+    color: var(--text-primary);
+    border: 1px solid var(--border-glass);
+}
+
+/* Concentric Border Frame Wrapper */
+.blanket-outer-frame {
+    display: inline-block;
+    position: relative;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    padding: 0;
+}
+
+.border-layer-frame {
+    position: relative;
+    box-sizing: border-box;
+    transition: all 0.2s ease;
+}
+
+/* Stitch Textures for Border Frames */
+.stitch-scallop {
+    background-image: radial-gradient(circle at 50% 0%, transparent 60%, currentColor 61%);
+    background-size: 16px 12px;
+    background-repeat: repeat-x;
+}
+
+.stitch-granny-cluster {
+    background-image: repeating-linear-gradient(90deg, currentColor 0px, currentColor 8px, transparent 8px, transparent 12px);
+    background-size: 12px 100%;
+}
+
+.stitch-moss {
+    background-image: repeating-linear-gradient(45deg, currentColor 0, currentColor 4px, transparent 4px, transparent 8px);
+}
+
+.stitch-ribbed {
+    background-image: repeating-linear-gradient(90deg, currentColor 0, currentColor 3px, transparent 3px, transparent 6px);
+}
+
+/* Interactive Drag-and-Drop & Cell Swapping */
+table.blanket td.cellSquare {
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+.cellSquare[draggable="true"] {
+    cursor: grab;
+}
+
+.cellSquare.cell-dragging {
+    opacity: 0.35;
+    transform: scale(0.92);
+    box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.cellSquare.drag-over {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 3px var(--accent-hover), 0 8px 20px rgba(91, 192, 190, 0.5);
+    z-index: 25;
+}
+
+.drag-ghost {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1000;
+    width: 60px;
+    height: 60px;
+    border-radius: 8px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 0 0 2px var(--accent);
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1.1);
+    transition: transform 0.05s ease;
+}
+
+/* Mobile Safe Areas (Capacitor iOS Notch & Android gesture bar support) */
+body {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Non-Square Motif Geometries */
+/* Hexagon Honeycomb */
+table.blanket.grid-hexagon td.cellSquare {
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    border-radius: 0 !important;
+    margin: -6px 0;
+}
+
+table.blanket.grid-hexagon tr:nth-child(odd) {
+    transform: translateX(25px);
+}
+
+/* Isometric Triangles */
+table.blanket.grid-triangle td.cellSquare.tri-up {
+    clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+    border-radius: 0 !important;
+}
+
+table.blanket.grid-triangle td.cellSquare.tri-down {
+    clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+    border-radius: 0 !important;
+}
+
+/* C2C Diagonal Badge Overlay */
+.c2c-badge {
+    position: absolute;
+    bottom: 3px;
+    right: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(0, 0, 0, 0.45);
+    padding: 1px 4px;
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+/* Photo-to-Palette Swatches UI */
+.photo-swatches-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.photo-swatch-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-glass);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 11px;
+}
+
+.photo-swatch-circle {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.yarn-match-name {
+    flex: 1;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Terminology Toggle Pills & Written Instructions Box */
+.terms-toggle-group {
+    display: flex;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 2px;
+}
+
+.term-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.term-btn.active {
+    background: var(--accent);
+    color: #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.written-instructions-box {
+    background: rgba(10, 15, 29, 0.6);
+    border: 1px solid var(--border-glass);
+    border-radius: 8px;
+    padding: 12px;
+    max-height: 280px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.written-round-step {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.written-round-step strong {
+    color: var(--accent);
+}

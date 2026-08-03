@@ -3,10 +3,12 @@
   "short_name": "Blanket Designer",
   "description": "Generate beautiful random patchwork blanket designs with granny squares.",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0b132b",
   "theme_color": "#1c2541",
   "orientation": "any",
+  "categories": ["lifestyle", "crafts", "utilities"],
   "icons": [
     {
       "src": "icons/icon.svg",

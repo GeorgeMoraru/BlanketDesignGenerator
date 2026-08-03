@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1c2541">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;">
     <title>Blanket Design Generator</title>
     
     <!-- PWA Manifest & App Info -->
@@ -20,10 +21,11 @@
     <link rel="stylesheet" href="css/app.css">
     
     <!-- External Libraries -->
-    <script src="https://unpkg.com/localforage@1.10.0/dist/localforage.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://unpkg.com/localforage@1.10.0/dist/localforage.min.js" integrity="sha384-MTDrIlFOzEqpmOxY6UIA/1Zkh0a64UlmJ6R0UrZXqXCPx99siPGi8EmtQjIeCcTH" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" integrity="sha384-JcnsjUPPylna1s1fvi1u12X5qjY5OL56iySh75FdtrwhO/SWXgMjoVqcKyIIWOLk" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H" crossorigin="anonymous"></script>
     
+    <script src="js/nativeBridge.js" defer></script>
     <script src="js/app.js" defer></script>
 </head>
 <body>
@@ -33,6 +35,16 @@
             <span class="navbar-title">Blanket Designer</span>
         </div>
         <div class="navbar-actions">
+            <button id="share-pattern-btn" class="paint-toggle-btn" title="Share blanket pattern link" aria-label="Share Pattern">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                <span>Share</span>
+            </button>
+            <div id="drag-lock-controls" class="work-mode-header-group" style="display:none;">
+                <span id="locked-count-badge" class="work-mode-progress-badge" title="Locked Cells">0 Locked</span>
+                <button id="clear-locks-btn" class="paint-toggle-btn" title="Clear all cell locks" aria-label="Clear Locks">
+                    <span>Clear Locks</span>
+                </button>
+            </div>
             <div id="paint-mode-controls" class="work-mode-header-group" style="display:none;">
                 <button id="paint-mode-toggle-btn" class="paint-toggle-btn" title="Paint Tool: Click grid cells to assign active pattern brush" aria-label="Toggle Paint Mode">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.5 7.5"></path></svg>
@@ -82,29 +94,38 @@
                 </div>
 
                 <div class="setting-group">
-                    <label for="border-width">Border Rows</label>
-                    <select id="border-width">
-                        <option value="0">No Border</option>
-                        <option value="1" selected>1 Row Border</option>
-                        <option value="2">2 Rows Border</option>
+                    <label for="geometry-shape">Motif Geometry</label>
+                    <select id="geometry-shape">
+                        <option value="square" selected>Square Grid (Standard)</option>
+                        <option value="hexagon">Hexagon Honeycomb (Staggered)</option>
+                        <option value="triangle">Isometric Triangles (Apex Alternating)</option>
+                        <option value="c2c">Corner-to-Corner (C2C Diagonal)</option>
+                        <option value="stripe">Stripe Rows (Continuous)</option>
                     </select>
                 </div>
 
-                <div class="setting-group" id="border-style-group">
-                    <label for="border-style">Border Style</label>
-                    <select id="border-style">
-                        <option value="solid" selected>Solid Edge</option>
-                        <option value="ribbed">Ribbed Stripes</option>
-                        <option value="corner-accent">Corner Accent</option>
-                        <option value="checker">Dual-Tone Checker</option>
-                    </select>
-                </div>
+                <div class="setting-group border-designer-section">
+                    <div class="border-section-header">
+                        <label>Multi-Layer Border</label>
+                        <button id="add-border-layer-btn" class="btn btn-sm btn-secondary" type="button" title="Add concentric border round">+ Layer</button>
+                    </div>
 
-                <div class="setting-group" id="border-color-group">
-                    <label for="border-color">Border Color</label>
-                    <select id="border-color">
-                        <!-- Populated dynamically from app.js -->
-                    </select>
+                    <div id="border-layers-list" class="border-layers-list">
+                        <!-- Rendered dynamically by app.js -->
+                    </div>
+
+                    <div class="setting-group" style="margin-top: 10px;">
+                        <label for="border-generator-preset">Auto-Color Preset</label>
+                        <div class="preset-input-row">
+                            <select id="border-generator-preset">
+                                <option value="echo" selected>Echo Inner Palette</option>
+                                <option value="contrast">Harmonious Contrast</option>
+                                <option value="ombre">Ombre Light-to-Dark</option>
+                                <option value="random">Randomized Stripes</option>
+                            </select>
+                            <button id="apply-border-preset-btn" class="btn btn-sm btn-secondary" type="button" title="Apply procedural color sequence">Apply</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="patterns-title-row">
@@ -124,6 +145,42 @@
             <button id="generate-btn" class="btn btn-primary">
                 Generate Design
             </button>
+
+            <!-- Photo-to-Palette AI -->
+            <div id="photo-palette-card" class="panel-card">
+                <div class="card-header-row">
+                    <h2>Photo-to-Yarn AI</h2>
+                </div>
+                <p class="sync-hint">Upload a photo to extract dominant colors and match to commercial yarn brands.</p>
+                <div class="photo-upload-box">
+                    <input type="file" id="photo-upload-input" accept="image/*" style="display:none;" />
+                    <button id="trigger-photo-upload-btn" class="btn btn-secondary" type="button" style="width: 100%;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                        Upload Inspiration Photo
+                    </button>
+                </div>
+                <div id="photo-swatches-container" style="display:none; margin-top: 12px;">
+                    <div id="photo-swatches-list" class="photo-swatches-list"></div>
+                    <button id="apply-photo-palette-btn" class="btn btn-secondary" type="button" style="margin-top: 8px; width: 100%;">
+                        Apply Photo Palette to Pattern
+                    </button>
+                </div>
+            </div>
+
+            <!-- Round-by-Round Written Pattern -->
+            <div id="written-pattern-card" class="panel-card">
+                <div class="card-header-row">
+                    <h2>Written Instructions</h2>
+                    <div class="terms-toggle-group">
+                        <button id="terms-us-btn" class="term-btn active" type="button">US</button>
+                        <button id="terms-uk-btn" class="term-btn" type="button">UK</button>
+                    </div>
+                </div>
+                <button id="toggle-written-instructions-btn" class="btn btn-secondary" type="button" style="width: 100%; margin-top: 6px;">
+                    Generate Step-by-Step Instructions
+                </button>
+                <div id="written-instructions-output" class="written-instructions-box" style="display:none; margin-top: 12px;"></div>
+            </div>
 
             <!-- Yarn Estimator -->
             <div id="yarn-estimator-card" class="panel-card">
@@ -150,13 +207,18 @@
                     <input type="number" id="hook-size" min="2" max="10" step="0.5" value="4.0" />
                 </div>
                 <div class="setting-group">
-                    <label for="join-method">Joining Method</label>
+                    <label for="join-method">Joining Seam Method</label>
                     <select id="join-method">
-                        <option value="none">No Join</option>
-                        <option value="whip">Whip Stitch (~1m / edge)</option>
-                        <option value="jayg" selected>Join As You Go (JAYG) (~1.5m / edge)</option>
-                        <option value="sc">Single Crochet Join (~2m / edge)</option>
+                        <option value="none">No Join / Seamless</option>
+                        <option value="mattress">Mattress / Whipstitch (Hand Sewn - 1.25x)</option>
+                        <option value="slipstitch">Flat Slip Stitch Join (1.60x)</option>
+                        <option value="jayg">Join-As-You-Go / JAYG (1.85x)</option>
+                        <option value="sc" selected>Single Crochet Join (Raised Seam - 2.40x)</option>
                     </select>
+                </div>
+                <div class="setting-group" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="yarn-safety-buffer" checked />
+                    <label for="yarn-safety-buffer" style="margin: 0; font-size: 12px; cursor: pointer;">Add 10% Safety Buffer</label>
                 </div>
                 <button id="calc-yarn-btn" class="btn btn-secondary">
                     Estimate Yarn Usage

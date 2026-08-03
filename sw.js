@@ -1,9 +1,10 @@
-const CACHE_NAME = 'blanket-generator-v17';
+const CACHE_NAME = 'blanket-generator-v19';
 const ASSETS = [
   './',
   'index.html',
   'css/app.css',
   'js/app.js',
+  'js/nativeBridge.js',
   'manifest.json',
   'icons/icon.svg'
 ];
@@ -34,10 +35,18 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Event - cache first, fallback to network
+// Fetch Event - cache first, fallback to network with runtime caching for fonts & CDNs
 self.addEventListener('fetch', (event) => {
-  // Only handle HTTP/HTTPS (ignore chrome-extension:// etc.)
-  if (!event.request.url.startsWith(self.location.origin)) {
+  const url = new URL(event.request.url);
+
+  // Handle local assets and trusted CDNs/Fonts
+  const isSameOrigin = url.origin === self.location.origin;
+  const isTrustedCdn = url.hostname.includes('fonts.googleapis.com') ||
+                       url.hostname.includes('fonts.gstatic.com') ||
+                       url.hostname.includes('unpkg.com') ||
+                       url.hostname.includes('cdnjs.cloudflare.com');
+
+  if (!isSameOrigin && !isTrustedCdn) {
     return;
   }
 
@@ -46,7 +55,17 @@ self.addEventListener('fetch', (event) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(event.request);
+      return fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return networkResponse;
+      }).catch(() => {
+        return cachedResponse;
+      });
     })
   );
 });

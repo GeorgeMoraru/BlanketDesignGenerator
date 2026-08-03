@@ -7,6 +7,59 @@
     'use strict';
 
     // =========================================================================
+    // 0. Security & Utility Helpers
+    // =========================================================================
+    const escapeHtml = (str) => {
+        if (typeof str !== 'string') return String(str ?? '');
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    };
+
+    const sanitizeHexColor = (color) => {
+        if (typeof color === 'string' && /^#([0-9a-fA-F]{3}){1,2}$/.test(color.trim())) {
+            return color.trim();
+        }
+        return '#ffffff';
+    };
+
+    const sanitizeInt = (val, defaultVal = 1, min = 1, max = 10000) => {
+        const parsed = parseInt(val, 10);
+        if (isNaN(parsed)) return defaultVal;
+        return Math.max(min, Math.min(max, parsed));
+    };
+
+    const safeLocalStorageGet = (key, fallback = null) => {
+        try {
+            return localStorage.getItem(key) ?? fallback;
+        } catch (e) {
+            console.warn('[Storage] localStorage.getItem failed:', e);
+            return fallback;
+        }
+    };
+
+    const safeLocalStorageSet = (key, value) => {
+        try {
+            localStorage.setItem(key, value);
+            return true;
+        } catch (e) {
+            console.warn('[Storage] localStorage.setItem failed:', e);
+            return false;
+        }
+    };
+
+    const debounce = (fn, delay = 250) => {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), delay);
+        };
+    };
+
+    // =========================================================================
     // 1. Service Worker & PWA Registration
     // =========================================================================
     if ('serviceWorker' in navigator) {
@@ -114,7 +167,8 @@
 
     // Helper to generate CSS custom properties style string for a pattern's colors
     const getPatternColorVariables = (colors) => {
-        return colors.map((color, index) => `--color-${index + 1}: ${color};`).join(' ');
+        if (!Array.isArray(colors)) return '';
+        return colors.map((color, index) => `--color-${index + 1}: ${sanitizeHexColor(color)};`).join(' ');
     };
 
     // =========================================================================
@@ -123,9 +177,16 @@
     const state = {
         rows: 8,
         cols: 8,
-        borderWidth: 1,
+        geometry: 'square',
+        crochetTerms: 'US',
+        extractedPhotoPalette: [],
+        borderWidth: 2,
         borderColor: '#27212b',
         borderStyle: 'solid',
+        borderLayers: [
+            { id: 'b-1', type: 'solid', color: '#27212b' },
+            { id: 'b-2', type: 'granny-cluster', color: '#e6ded2' }
+        ],
         patterns: [],
         blanketGrid: [],
         completedSquares: new Set(),
@@ -295,6 +356,461 @@
     };
 
     // =========================================================================
+    // 5b. Multi-Layer Border & Drag-and-Drop Controllers
+    // =========================================================================
+    const STITCH_TYPES = {
+        solid: 'Solid DC/HDC Band',
+        'granny-cluster': 'Granny Cluster (3-DC)',
+        moss: 'Moss Stitch (Woven)',
+        ribbed: 'Ribbed Cable',
+        shell: 'Shell / Scallop Edging'
+    };
+
+    const renderBorderLayersList = () => {
+        const container = document.querySelector('#border-layers-list');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (!state.borderLayers || state.borderLayers.length === 0) {
+            container.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 6px 0;">No border layers. Click "+ Layer" to add.</div>';
+            state.borderWidth = 0;
+            updateDimensionsInfo();
+            return;
+        }
+
+        state.borderWidth = state.borderLayers.length;
+
+        state.borderLayers.forEach((layer, idx) => {
+            const item = document.createElement('div');
+            item.className = 'border-layer-item';
+
+            const num = document.createElement('span');
+            num.className = 'border-layer-num';
+            num.textContent = `R${idx + 1}`;
+
+            const select = document.createElement('select');
+            select.className = 'border-layer-stitch';
+            Object.keys(STITCH_TYPES).forEach(stKey => {
+                const opt = document.createElement('option');
+                opt.value = stKey;
+                opt.textContent = STITCH_TYPES[stKey];
+                if (layer.type === stKey) opt.selected = true;
+                select.appendChild(opt);
+            });
+            select.addEventListener('change', (e) => {
+                layer.type = e.target.value;
+                drawBlanketCanvas(true);
+            });
+
+            const colorInput = document.createElement('input');
+            colorInput.type = 'color';
+            colorInput.className = 'border-layer-color-picker';
+            colorInput.value = layer.color || '#27212b';
+            colorInput.title = 'Layer Color';
+            colorInput.addEventListener('input', (e) => {
+                layer.color = e.target.value;
+                drawBlanketCanvas(true);
+            });
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn-remove-layer';
+            removeBtn.innerHTML = '×';
+            removeBtn.title = 'Remove border layer';
+            removeBtn.addEventListener('click', () => {
+                removeBorderLayer(layer.id);
+            });
+
+            item.appendChild(num);
+            item.appendChild(select);
+            item.appendChild(colorInput);
+            item.appendChild(removeBtn);
+
+            container.appendChild(item);
+        });
+
+        updateDimensionsInfo();
+    };
+
+    const addBorderLayer = (type = 'solid', color = null) => {
+        if (!state.borderLayers) state.borderLayers = [];
+        if (!color) {
+            const allColors = state.patterns.flatMap(p => p.colors);
+            color = allColors[state.borderLayers.length % Math.max(1, allColors.length)] || '#27212b';
+        }
+        const newLayer = {
+            id: `b-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            type: type,
+            color: color
+        };
+        state.borderLayers.push(newLayer);
+        renderBorderLayersList();
+        drawBlanketCanvas(true);
+    };
+
+    const removeBorderLayer = (id) => {
+        state.borderLayers = state.borderLayers.filter(l => l.id !== id);
+        renderBorderLayersList();
+        drawBlanketCanvas(true);
+    };
+
+    const applyBorderPreset = (presetKey) => {
+        if (!state.borderLayers || state.borderLayers.length === 0) {
+            addBorderLayer('solid');
+            addBorderLayer('granny-cluster');
+        }
+        const patterns = state.patterns;
+        const allColors = patterns.flatMap(p => p.colors);
+        if (allColors.length === 0) return;
+
+        if (presetKey === 'echo') {
+            state.borderLayers.forEach((layer, i) => {
+                layer.color = allColors[i % allColors.length];
+            });
+        } else if (presetKey === 'contrast') {
+            state.borderLayers.forEach((layer, i) => {
+                const baseHex = allColors[i % allColors.length];
+                layer.color = getComplementaryHex(baseHex);
+            });
+        } else if (presetKey === 'ombre') {
+            const baseHex = allColors[0] || '#e07a5f';
+            const shades = generateOmbreShades(baseHex, state.borderLayers.length);
+            state.borderLayers.forEach((layer, i) => {
+                layer.color = shades[i];
+            });
+        } else if (presetKey === 'random') {
+            const randPal = COMMERCIAL_PALETTES[Math.floor(Math.random() * COMMERCIAL_PALETTES.length)];
+            state.borderLayers.forEach((layer, i) => {
+                layer.color = randPal.colors[i % randPal.colors.length];
+            });
+        }
+
+        renderBorderLayersList();
+        drawBlanketCanvas(true);
+    };
+
+    const getComplementaryHex = (hex) => {
+        let color = (hex || '#000000').replace('#', '');
+        if (color.length === 3) color = color.split('').map(c => c + c).join('');
+        const num = parseInt(color, 16);
+        let r = 255 - ((num >> 16) & 255);
+        let g = 255 - ((num >> 8) & 255);
+        let b = 255 - (num & 255);
+        return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+    };
+
+    const generateOmbreShades = (hex, count) => {
+        let color = (hex || '#e07a5f').replace('#', '');
+        if (color.length === 3) color = color.split('').map(c => c + c).join('');
+        const num = parseInt(color, 16);
+        let r = (num >> 16) & 255;
+        let g = (num >> 8) & 255;
+        let b = num & 255;
+
+        const shades = [];
+        for (let i = 0; i < count; i++) {
+            const factor = 0.4 + (i / Math.max(1, count - 1)) * 0.7;
+            const nr = Math.min(255, Math.floor(r * factor));
+            const ng = Math.min(255, Math.floor(g * factor));
+            const nb = Math.min(255, Math.floor(b * factor));
+            shades.push(`#${((1 << 24) + (nr << 16) + (ng << 8) + nb).toString(16).slice(1)}`);
+        }
+        return shades;
+    };
+
+    const updateLockControlsUI = () => {
+        const dragLockControls = document.querySelector('#drag-lock-controls');
+        const badge = document.querySelector('#locked-count-badge');
+        const clearBtn = document.querySelector('#clear-locks-btn');
+        if (!dragLockControls) return;
+
+        const lockCount = state.lockedCells ? state.lockedCells.size : 0;
+        if (lockCount > 0) {
+            dragLockControls.style.display = 'flex';
+            if (badge) badge.textContent = `${lockCount} Locked`;
+            if (clearBtn) clearBtn.style.display = 'inline-block';
+        } else {
+            if (badge) badge.textContent = '0 Locked';
+            if (clearBtn) clearBtn.style.display = 'none';
+            dragLockControls.style.display = 'none';
+        }
+    };
+
+    const swapTiles = (r1, c1, r2, c2) => {
+        if (!state.blanketGrid || r1 < 0 || r1 >= state.rows || c1 < 0 || c1 >= state.cols ||
+            r2 < 0 || r2 >= state.rows || c2 < 0 || c2 >= state.cols) {
+            return false;
+        }
+
+        const srcKey = `${r1}-${c1}`;
+        const destKey = `${r2}-${c2}`;
+
+        if (state.lockedCells.has(destKey)) {
+            console.log(`Cannot drop onto locked cell (${r2}, ${c2})`);
+            return false;
+        }
+
+        const temp = state.blanketGrid[r1][c1];
+        state.blanketGrid[r1][c1] = state.blanketGrid[r2][c2];
+        state.blanketGrid[r2][c2] = temp;
+
+        if (state.lockedCells.has(srcKey)) {
+            state.lockedCells.delete(srcKey);
+            state.lockedCells.add(destKey);
+        }
+
+        drawBlanketCanvas(true);
+        appendToHistory();
+        return true;
+    };
+
+    let touchDragState = null;
+
+    const setupCellPointerDrag = (cell, inR, inC) => {
+        cell.addEventListener('pointerdown', (e) => {
+            if (state.paintMode || state.workMode) return;
+            if (e.target.closest('.cell-lock-btn')) return;
+
+            touchDragState = {
+                srcR: inR,
+                srcC: inC,
+                startX: e.clientX,
+                startY: e.clientY,
+                isDragging: false,
+                ghostEl: null,
+                pointerId: e.pointerId
+            };
+        });
+    };
+
+    window.addEventListener('pointermove', (e) => {
+        if (!touchDragState) return;
+        const dx = e.clientX - touchDragState.startX;
+        const dy = e.clientY - touchDragState.startY;
+
+        if (!touchDragState.isDragging && Math.sqrt(dx * dx + dy * dy) > 8) {
+            touchDragState.isDragging = true;
+
+            const ghost = document.createElement('div');
+            ghost.className = 'drag-ghost';
+            const patId = state.blanketGrid[touchDragState.srcR][touchDragState.srcC];
+            const pattern = state.patterns.find(p => p.id === patId);
+            if (pattern) {
+                const styleDetails = PATTERN_STYLES[pattern.style];
+                ghost.classList.add(styleDetails.className);
+                ghost.style = getPatternColorVariables(pattern.colors);
+            }
+            ghost.style.left = `${e.clientX}px`;
+            ghost.style.top = `${e.clientY}px`;
+            document.body.appendChild(ghost);
+            touchDragState.ghostEl = ghost;
+        }
+
+        if (touchDragState.isDragging && touchDragState.ghostEl) {
+            touchDragState.ghostEl.style.left = `${e.clientX}px`;
+            touchDragState.ghostEl.style.top = `${e.clientY}px`;
+
+            const targetEl = document.elementFromPoint(e.clientX, e.clientY);
+            document.querySelectorAll('.cellSquare.drag-over').forEach(c => c.classList.remove('drag-over'));
+            if (targetEl && targetEl.classList.contains('cellSquare') && !targetEl.classList.contains('border-cell')) {
+                targetEl.classList.add('drag-over');
+            }
+        }
+    });
+
+    window.addEventListener('pointerup', (e) => {
+        if (!touchDragState) return;
+
+        if (touchDragState.isDragging) {
+            if (touchDragState.ghostEl) {
+                touchDragState.ghostEl.remove();
+            }
+            document.querySelectorAll('.cellSquare.drag-over').forEach(c => c.classList.remove('drag-over'));
+
+            const targetEl = document.elementFromPoint(e.clientX, e.clientY);
+            if (targetEl && targetEl.classList.contains('cellSquare') && !targetEl.classList.contains('border-cell')) {
+                const destR = parseInt(targetEl.dataset.inRow);
+                const destC = parseInt(targetEl.dataset.inCol);
+                if (!isNaN(destR) && !isNaN(destC)) {
+                    swapTiles(touchDragState.srcR, touchDragState.srcC, destR, destC);
+                }
+            }
+        }
+        touchDragState = null;
+    });
+
+    // =========================================================================
+    // 5c. Photo-to-Palette AI Engine (CIELAB Delta E Matcher)
+    // =========================================================================
+    const hexToRgb = (hex) => {
+        let c = (hex || '#000000').replace('#', '');
+        if (c.length === 3) c = c.split('').map(x => x + x).join('');
+        const num = parseInt(c, 16);
+        return [ (num >> 16) & 255, (num >> 8) & 255, num & 255 ];
+    };
+
+    const rgbToLab = (r, g, b) => {
+        let nr = r / 255, ng = g / 255, nb = b / 255;
+        nr = nr > 0.04045 ? Math.pow((nr + 0.055) / 1.055, 2.4) : nr / 12.92;
+        ng = ng > 0.04045 ? Math.pow((ng + 0.055) / 1.055, 2.4) : ng / 12.92;
+        nb = nb > 0.04045 ? Math.pow((nb + 0.055) / 1.055, 2.4) : nb / 12.92;
+
+        let x = (nr * 0.4124564 + ng * 0.3575761 + nb * 0.1804375) / 0.95047;
+        let y = (nr * 0.2126729 + ng * 0.7151522 + nb * 0.0721750) / 1.00000;
+        let z = (nr * 0.0193339 + ng * 0.1191920 + nb * 0.9503041) / 1.08883;
+
+        const fx = x > 0.008856 ? Math.cbrt(x) : (7.787 * x) + (16 / 116);
+        const fy = y > 0.008856 ? Math.cbrt(y) : (7.787 * y) + (16 / 116);
+        const fz = z > 0.008856 ? Math.cbrt(z) : (7.787 * z) + (16 / 116);
+
+        return [ (116 * fy) - 16, 500 * (fx - fy), 200 * (fy - fz) ];
+    };
+
+    const deltaE76 = (lab1, lab2) => {
+        const dl = lab1[0] - lab2[0];
+        const da = lab1[1] - lab2[1];
+        const db = lab1[2] - lab2[2];
+        return Math.sqrt(dl * dl + da * da + db * db);
+    };
+
+    const findClosestYarnShade = (hexColor) => {
+        const [r, g, b] = hexToRgb(hexColor);
+        const targetLab = rgbToLab(r, g, b);
+        let minDelta = Infinity;
+        let bestMatch = { brand: 'Custom', shadeName: hexColor, hex: hexColor };
+
+        COMMERCIAL_PALETTES.forEach(pal => {
+            pal.colors.forEach((hex, i) => {
+                const [pr, pg, pb] = hexToRgb(hex);
+                const palLab = rgbToLab(pr, pg, pb);
+                const dist = deltaE76(targetLab, palLab);
+                if (dist < minDelta) {
+                    minDelta = dist;
+                    bestMatch = {
+                        brand: pal.brand,
+                        shadeName: pal.shades[i],
+                        hex: hex
+                    };
+                }
+            });
+        });
+        return bestMatch;
+    };
+
+    const extractPhotoPalette = (file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 100;
+                canvas.height = 100;
+                ctx.drawImage(img, 0, 0, 100, 100);
+
+                const imgData = ctx.getImageData(0, 0, 100, 100).data;
+                const sampledColors = [];
+                for (let i = 0; i < imgData.length; i += 64) {
+                    const r = imgData[i];
+                    const g = imgData[i + 1];
+                    const b = imgData[i + 2];
+                    const hex = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+                    sampledColors.push(hex);
+                }
+
+                const extracted = Array.from(new Set(sampledColors)).slice(0, 4);
+                state.extractedPhotoPalette = extracted;
+
+                renderPhotoSwatches();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const renderPhotoSwatches = () => {
+        const container = document.querySelector('#photo-swatches-container');
+        const list = document.querySelector('#photo-swatches-list');
+        if (!container || !list) return;
+
+        list.innerHTML = '';
+        state.extractedPhotoPalette.forEach(hex => {
+            const match = findClosestYarnShade(hex);
+            const item = document.createElement('div');
+            item.className = 'photo-swatch-item';
+            item.innerHTML = `
+                <div class="photo-swatch-circle" style="background:${hex};"></div>
+                <div class="yarn-match-name">
+                    <strong>${match.brand}</strong> - ${match.shadeName}
+                </div>
+            `;
+            list.appendChild(item);
+        });
+        container.style.display = 'block';
+    };
+
+    const applyPhotoPaletteToState = () => {
+        if (!state.extractedPhotoPalette || state.extractedPhotoPalette.length === 0) return;
+        if (state.patterns.length > 0) {
+            state.patterns.forEach(p => {
+                p.colors = [...state.extractedPhotoPalette];
+            });
+            drawBlanketCanvas(true);
+            renderPatternsList();
+        }
+    };
+
+    // =========================================================================
+    // 5d. Round-by-Round Written Pattern Generator
+    // =========================================================================
+    const CROCHET_TERMS = {
+        US: {
+            sc: 'sc',
+            hdc: 'hdc',
+            dc: 'dc',
+            tr: 'tr',
+            slst: 'sl st',
+            ring: 'magic ring (or ch 4, sl st to first ch to form ring)'
+        },
+        UK: {
+            sc: 'dc',
+            hdc: 'htr',
+            dc: 'tr',
+            tr: 'dtr',
+            slst: 'ss',
+            ring: 'magic ring (or ch 4, ss to first ch to form ring)'
+        }
+    };
+
+    const generateWrittenInstructions = () => {
+        const outputBox = document.querySelector('#written-instructions-output');
+        if (!outputBox) return;
+
+        const terms = CROCHET_TERMS[state.crochetTerms || 'US'];
+        let html = `<h4 style="margin:0 0 8px 0; color:var(--accent);">Written Instructions (${state.crochetTerms || 'US'} Terms)</h4>`;
+        html += `<p style="font-size:11px; color:var(--text-secondary); margin-bottom:10px;">Geometry: <strong>${(state.geometry || 'square').toUpperCase()}</strong> | Motifs: <strong>${state.patterns.length}</strong> patterns</p>`;
+
+        state.patterns.forEach((p, idx) => {
+            const pName = PATTERN_STYLES[p.style]?.name || 'Granny Motif';
+            const c1 = p.colors[0] || '#ffffff';
+            const c2 = p.colors[1] || c1;
+            const c3 = p.colors[2] || c2;
+            const c4 = p.colors[3] || c3;
+
+            html += `<div class="written-round-step">`;
+            html += `<strong>Pattern #${idx + 1} (${pName})</strong> - Make ${p.quantity} motifs:<br/>`;
+            html += `• <strong>Round 1</strong>: With <span class="color-dot" style="background:${c1}"></span>, start with ${terms.ring}. Ch 3 (counts as 1 ${terms.dc}), 2 ${terms.dc} into ring, ch 2, *3 ${terms.dc} into ring, ch 2; repeat from * 2 more times. Join with ${terms.slst}. Fasten off.<br/>`;
+            html += `• <strong>Round 2</strong>: Join <span class="color-dot" style="background:${c2}"></span> in any ch-2 corner. Ch 3, (2 ${terms.dc}, ch 2, 3 ${terms.dc}) in same corner, ch 1, *(3 ${terms.dc}, ch 2, 3 ${terms.dc}) in next corner, ch 1; repeat from * 2 more times. Join with ${terms.slst}. Fasten off.<br/>`;
+            html += `• <strong>Round 3</strong>: Join <span class="color-dot" style="background:${c3}"></span> in corner space. Ch 3, (2 ${terms.dc}, ch 2, 3 ${terms.dc}) in same corner, ch 1, 3 ${terms.dc} in next ch-1 space, ch 1, *(3 ${terms.dc}, ch 2, 3 ${terms.dc}) in corner, ch 1, 3 ${terms.dc} in side space, ch 1; repeat from *. Join with ${terms.slst}. Fasten off.<br/>`;
+            html += `• <strong>Round 4</strong>: Join <span class="color-dot" style="background:${c4}"></span> in corner space. Repeat Round 3 working 3 ${terms.dc} clusters along edges. Join with ${terms.slst}. Fasten off.`;
+            html += `</div>`;
+        });
+
+        outputBox.innerHTML = html;
+        outputBox.style.display = 'block';
+    };
+
+    // =========================================================================
     // 6. UI / DOM Controller
     // =========================================================================
     
@@ -351,6 +867,11 @@
                 badge.style.borderColor = 'rgba(91, 192, 190, 0.2)';
                 badge.style.color = 'var(--accent)';
                 badge.title = `Covers cells: You configured ${totalQty} blocks for ${innerCells} inner cells.`;
+            }
+
+            if (totalCells > 1600) {
+                badge.innerText += ` ⚠️ High Grid Size`;
+                badge.title += ` Note: Grids >1600 cells may impact DOM rendering performance on low-end devices.`;
             }
         }
     };
@@ -609,8 +1130,7 @@
         const totalCols = innerCols + bWidth * 2;
 
         // Create table grid element
-        const table = document.createElement('table');
-        table.className = 'blanket';
+        table.className = `blanket grid-${state.geometry || 'square'}`;
         if (state.workMode) {
             table.classList.add('work-mode-active');
         }
@@ -629,13 +1149,21 @@
 
                 if (isBorder) {
                     cell.classList.add('border-cell');
-                    if (bStyle !== 'solid') {
+                    
+                    const distFromEdge = Math.min(r, totalRows - 1 - r, c, totalCols - 1 - c);
+                    const layer = state.borderLayers && state.borderLayers[distFromEdge] ? state.borderLayers[distFromEdge] : null;
+
+                    const layerColor = layer ? layer.color : bColor;
+                    cell.classList.add('granny-solid');
+                    cell.style.backgroundColor = layerColor;
+                    cell.style.setProperty('--color-1', layerColor);
+
+                    if (layer && layer.type !== 'solid') {
+                        cell.classList.add(`stitch-${layer.type}`);
+                    } else if (bStyle !== 'solid') {
                         cell.classList.add(`border-${bStyle}`);
                     }
-                    cell.classList.add('granny-solid');
-                    cell.style.backgroundColor = bColor;
-                    cell.style.setProperty('--color-1', bColor);
-                    cell.title = 'Border square';
+                    cell.title = `Border Round ${distFromEdge + 1}${layer ? ' (' + (STITCH_TYPES[layer.type] || layer.type) + ')' : ''}`;
 
                     const isTop = r < bWidth;
                     const isBottom = r >= totalRows - bWidth;
@@ -648,6 +1176,18 @@
                 } else {
                     const inR = r - bWidth;
                     const inC = c - bWidth;
+                    cell.dataset.inRow = inR;
+                    cell.dataset.inCol = inC;
+
+                    if (state.geometry === 'triangle') {
+                        cell.classList.add((inR + inC) % 2 === 0 ? 'tri-up' : 'tri-down');
+                    } else if (state.geometry === 'c2c') {
+                        const badge = document.createElement('span');
+                        badge.className = 'c2c-badge';
+                        badge.textContent = `D${inR + inC + 1}`;
+                        cell.appendChild(badge);
+                    }
+
                     const patternId = state.blanketGrid[inR][inC];
                     const pattern = state.patterns.find(p => p.id === patternId);
 
@@ -695,45 +1235,44 @@
                             lockBtn.setAttribute('aria-label', lockBtn.title);
                             lockBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
                         }
+                        updateLockControlsUI();
                     });
 
                     cell.appendChild(lockBtn);
 
-                    // Add drag and drop functionality
+                    // Setup touch pointer drag and HTML5 drag and drop
                     cell.setAttribute('draggable', 'true');
+                    setupCellPointerDrag(cell, inR, inC);
+
                     cell.addEventListener('dragstart', (e) => {
                         if (state.paintMode || state.workMode) return;
                         e.dataTransfer.setData('text/plain', JSON.stringify({ r: inR, c: inC }));
                         e.dataTransfer.effectAllowed = 'move';
-                        cell.style.opacity = '0.5';
+                        cell.classList.add('cell-dragging');
                     });
                     cell.addEventListener('dragend', () => {
-                        cell.style.opacity = '1';
+                        cell.classList.remove('cell-dragging');
                     });
                     cell.addEventListener('dragover', (e) => {
                         if (state.paintMode || state.workMode) return;
                         e.preventDefault();
                         e.dataTransfer.dropEffect = 'move';
+                        cell.classList.add('drag-over');
+                    });
+                    cell.addEventListener('dragleave', () => {
+                        cell.classList.remove('drag-over');
                     });
                     cell.addEventListener('drop', (e) => {
                         if (state.paintMode || state.workMode) return;
                         e.preventDefault();
+                        cell.classList.remove('drag-over');
                         const dataStr = e.dataTransfer.getData('text/plain');
                         if (!dataStr) return;
                         
                         try {
                             const source = JSON.parse(dataStr);
-                            const srcR = source.r;
-                            const srcC = source.c;
-                            
-                            if (srcR !== inR || srcC !== inC) {
-                                // Swap pattern IDs in the grid state
-                                const temp = state.blanketGrid[srcR][srcC];
-                                state.blanketGrid[srcR][srcC] = state.blanketGrid[inR][inC];
-                                state.blanketGrid[inR][inC] = temp;
-                                
-                                // Redraw table, preserving grid state
-                                drawBlanketCanvas(true);
+                            if (source.r !== inR || source.c !== inC) {
+                                swapTiles(source.r, source.c, inR, inC);
                             }
                         } catch (err) {
                             console.error('Drop error:', err);
@@ -873,19 +1412,60 @@
             try {
                 const imported = JSON.parse(e.target.result);
                 if (!Array.isArray(imported)) throw new Error('Invalid format');
+                
+                // Sanitize imported structure to avoid XSS and invalid types
+                const sanitizedImported = imported.filter(item => item && typeof item === 'object').map(item => {
+                    const id = (typeof item.id === 'string' || typeof item.id === 'number') ? item.id : Date.now() + Math.random();
+                    const rows = sanitizeInt(item.rows, 8, 1, 100);
+                    const cols = sanitizeInt(item.cols, 8, 1, 100);
+                    const borderWidth = sanitizeInt(item.borderWidth, 1, 0, 20);
+                    const borderColor = sanitizeHexColor(item.borderColor);
+                    const timestamp = typeof item.timestamp === 'number' ? item.timestamp : Date.now();
+                    const patterns = Array.isArray(item.patterns) ? item.patterns.map(p => ({
+                        id: sanitizeInt(p.id, 0, 0, 10000),
+                        style: typeof p.style === 'string' ? escapeHtml(p.style) : 'classic',
+                        paletteIndex: sanitizeInt(p.paletteIndex, 0, 0, 100),
+                        colors: Array.isArray(p.colors) ? p.colors.map(c => sanitizeHexColor(c)) : ['#ffffff'],
+                        quantity: sanitizeInt(p.quantity, 1, 0, 10000),
+                        isLocked: Boolean(p.isLocked)
+                    })) : [];
+
+                    return {
+                        id,
+                        rows,
+                        cols,
+                        borderWidth,
+                        borderColor,
+                        timestamp,
+                        patterns,
+                        grid: Array.isArray(item.grid) ? item.grid : [],
+                        lockedCells: Array.isArray(item.lockedCells) ? item.lockedCells : []
+                    };
+                });
+
+                // Bump nextPatternId to prevent ID collision with newly added patterns
+                let maxId = state.nextPatternId || 0;
+                sanitizedImported.forEach(item => {
+                    item.patterns.forEach(p => {
+                        if (p.id >= maxId) maxId = p.id + 1;
+                    });
+                });
+                state.nextPatternId = maxId;
+
                 // Merge imported with existing, deduplicate by id, keep newest 500
-                const merged = [...imported, ...state.history];
+                const merged = [...sanitizedImported, ...state.history];
                 const seen = new Set();
                 state.history = merged.filter(item => {
                     if (seen.has(item.id)) return false;
                     seen.add(item.id);
                     return true;
                 }).slice(0, 500);
-                localforage.setItem('blanket_local_history', state.history);
+                
+                localforage.setItem('blanket_local_history', state.history).catch(err => console.warn(err));
                 renderHistoryList();
-                alert(`Imported ${imported.length} design(s) successfully!`);
+                alert(`Imported ${sanitizedImported.length} design(s) successfully!`);
             } catch (err) {
-                alert('Failed to import: invalid JSON file.');
+                alert('Failed to import: invalid JSON file format.');
             }
         };
         reader.readAsText(file);
@@ -918,15 +1498,24 @@
             
             let swatchesHtml = '';
             const uniqueColors = new Set();
-            item.patterns.forEach(p => p.colors.forEach(c => uniqueColors.add(c)));
+            if (Array.isArray(item.patterns)) {
+                item.patterns.forEach(p => {
+                    if (Array.isArray(p.colors)) {
+                        p.colors.forEach(c => uniqueColors.add(sanitizeHexColor(c)));
+                    }
+                });
+            }
             Array.from(uniqueColors).slice(0, 8).forEach(color => {
                 swatchesHtml += `<div class="history-preview-swatch" style="background: ${color};"></div>`;
             });
             
+            const safeRows = sanitizeInt(item.rows, 8, 1, 100);
+            const safeCols = sanitizeInt(item.cols, 8, 1, 100);
+            
             historyItem.innerHTML = `
                 <div class="history-item-header">
-                    <span class="history-item-time">${dateStr}</span>
-                    <span class="history-item-size">${item.rows}×${item.cols}</span>
+                    <span class="history-item-time">${escapeHtml(dateStr)}</span>
+                    <span class="history-item-size">${safeRows}×${safeCols}</span>
                 </div>
                 <div class="history-preview-bar">
                     ${swatchesHtml}
@@ -1177,41 +1766,60 @@
             }
         });
 
-        // Add Border yarn estimate if border is present
-        const bWidth = state.borderWidth || 0;
-        const bColor = state.borderColor || '#27212b';
-        if (bWidth > 0) {
-            const totalRows = state.rows + bWidth * 2;
-            const totalCols = state.cols + bWidth * 2;
-            const totalCells = totalRows * totalCols;
-            const borderCellsCount = totalCells - (state.rows * state.cols);
-            
-            const totalBorderAmount = borderCellsCount * amountPerSquare;
-            colorAmounts[bColor] = (colorAmounts[bColor] || 0) + totalBorderAmount;
+        // Add Border yarn estimate for Multi-Layer Border System
+        if (state.borderLayers && state.borderLayers.length > 0) {
+            const innerW = state.cols;
+            const innerH = state.rows;
+            const STITCH_MULTIPLIERS = {
+                solid: 1.0,
+                'granny-cluster': 1.25,
+                moss: 1.1,
+                ribbed: 1.4,
+                shell: 1.5
+            };
+
+            state.borderLayers.forEach((layer, idx) => {
+                const k = idx + 1;
+                // Linear perimeter formula: 2 * (W + H + 8*k)
+                const perimeterUnits = 2 * (innerW + innerH + 8 * k);
+                const multiplier = STITCH_MULTIPLIERS[layer.type] || 1.0;
+                const layerYarn = perimeterUnits * (amountPerSquare * 0.12) * multiplier;
+
+                colorAmounts[layer.color] = (colorAmounts[layer.color] || 0) + layerYarn;
+            });
         }
 
-        // Add Joining Yarn
+        // Add Joining Seam Yarn
         const joinMethod = document.querySelector('#join-method')?.value || 'none';
-        let joinAmountPerEdge = 0;
-        if (joinMethod === 'whip') joinAmountPerEdge = isMetric ? 1 : 1.1;
-        if (joinMethod === 'jayg') joinAmountPerEdge = isMetric ? 1.5 : 1.6;
-        if (joinMethod === 'sc') joinAmountPerEdge = isMetric ? 2 : 2.2;
-        
+        const SEAM_MULTIPLIERS = {
+            none: 0,
+            mattress: 1.25,
+            whip: 1.25,
+            slipstitch: 1.60,
+            jayg: 1.85,
+            sc: 2.40
+        };
+
+        const seamMult = SEAM_MULTIPLIERS[joinMethod] || 0;
         let totalEdges = 0;
         if (state.rows > 0 && state.cols > 0) {
-            totalEdges = (state.rows - 1) * state.cols + (state.cols - 1) * state.rows;
+            totalEdges = state.rows * (state.cols - 1) + state.cols * (state.rows - 1);
         }
-        
-        const joinYarnNeeded = totalEdges * joinAmountPerEdge;
+
+        const joinYarnNeeded = totalEdges * (isMetric ? 0.15 : 0.16) * seamMult * (amountPerSquare * 0.1);
+        const bColor = state.borderLayers && state.borderLayers.length > 0 ? state.borderLayers[0].color : '#27212b';
         if (joinYarnNeeded > 0) {
             colorAmounts[bColor] = (colorAmounts[bColor] || 0) + joinYarnNeeded;
         }
 
+        const addBuffer = document.querySelector('#yarn-safety-buffer')?.checked;
+        const safetyFactor = addBuffer ? 1.10 : 1.0;
+
         const resultsContainer = document.querySelector('#yarn-results');
-        resultsContainer.innerHTML = '<strong>Estimated Yarn Needed:</strong><ul>';
+        resultsContainer.innerHTML = `<strong>Estimated Yarn Needed ${addBuffer ? '(Includes 10% Safety Buffer)' : ''}:</strong><ul>`;
         let total = 0;
         Object.keys(colorAmounts).forEach(color => {
-            const amount = Math.ceil(colorAmounts[color]);
+            const amount = Math.ceil(colorAmounts[color] * safetyFactor);
             const skeins = Math.ceil(amount / skeinSize);
             const shadeInfo = getYarnShadeInfo(color);
             total += amount;
@@ -1226,7 +1834,7 @@
             `;
         });
         
-        resultsContainer.innerHTML += `</ul><div class="yarn-total">Total: ${total} ${unitFullLabel}</div>`;
+        resultsContainer.innerHTML += `</ul><div class="yarn-total">Grand Total: ${total} ${unitFullLabel}</div>`;
         resultsContainer.style.display = 'block';
     };
 
@@ -1317,6 +1925,35 @@
                     startY += 7;
                 }
 
+                // PAGE 3: Written Instructions
+                doc.addPage();
+                doc.setFontSize(18);
+                doc.text('Step-by-Step Written Pattern Instructions', 14, 20);
+                doc.setFontSize(10);
+                doc.text(`Terminology: ${state.crochetTerms || 'US'} Terms | Geometry: ${(state.geometry || 'square').toUpperCase()}`, 14, 28);
+
+                let patternY = 36;
+                const terms = CROCHET_TERMS[state.crochetTerms || 'US'];
+                state.patterns.forEach((p, idx) => {
+                    if (patternY > 260) {
+                        doc.addPage();
+                        patternY = 20;
+                    }
+                    const pName = PATTERN_STYLES[p.style]?.name || 'Granny Motif';
+                    doc.setFontSize(11);
+                    doc.text(`Pattern #${idx + 1} (${pName}) - Make ${p.quantity} motifs:`, 14, patternY);
+                    patternY += 6;
+                    doc.setFontSize(9);
+                    doc.text(`- Round 1: Start with ${terms.ring}. Ch 3, 2 ${terms.dc} into ring, ch 2, *3 ${terms.dc}, ch 2; repeat 2x. Join with ${terms.slst}.`, 16, patternY);
+                    patternY += 5;
+                    doc.text(`- Round 2: Join in corner. Ch 3, (2 ${terms.dc}, ch 2, 3 ${terms.dc}) in corner, ch 1, *(3 ${terms.dc}, ch 2, 3 ${terms.dc}) in next corner, ch 1; repeat 2x.`, 16, patternY);
+                    patternY += 5;
+                    doc.text(`- Round 3: Join in corner. Ch 3, (2 ${terms.dc}, ch 2, 3 ${terms.dc}) in corner, ch 1, 3 ${terms.dc} in side space, ch 1; repeat around.`, 16, patternY);
+                    patternY += 5;
+                    doc.text(`- Round 4: Join in corner. Repeat Round 3 working 3 ${terms.dc} into side spaces along edges.`, 16, patternY);
+                    patternY += 8;
+                });
+
                 doc.save(`Blanket_Blueprint_${Date.now()}.pdf`);
             } catch (err) {
                 console.error("PDF error:", err);
@@ -1366,7 +2003,10 @@
                 ctx.clip();
                 
                 if (isBorder) {
-                    ctx.fillStyle = bColor;
+                    const distFromEdge = Math.min(r, totalRows - 1 - r, c, totalCols - 1 - c);
+                    const layer = state.borderLayers && state.borderLayers[distFromEdge] ? state.borderLayers[distFromEdge] : null;
+                    const layerColor = layer ? layer.color : bColor;
+                    ctx.fillStyle = layerColor;
                     ctx.fillRect(x, y, cellSize, cellSize);
                 } else {
                     const inR = r - bWidth;
@@ -1556,13 +2196,14 @@
         const borderStyleInput = document.querySelector('#border-style');
         const borderColorInput = document.querySelector('#border-color');
         
+        const debouncedDimensionsChange = debounce(onDimensionsChange, 250);
         if (rowsInput) {
             rowsInput.addEventListener('change', onDimensionsChange);
-            rowsInput.addEventListener('input', onDimensionsChange);
+            rowsInput.addEventListener('input', debouncedDimensionsChange);
         }
         if (colsInput) {
             colsInput.addEventListener('change', onDimensionsChange);
-            colsInput.addEventListener('input', onDimensionsChange);
+            colsInput.addEventListener('input', debouncedDimensionsChange);
         }
         if (borderWidthInput) {
             borderWidthInput.addEventListener('change', onDimensionsChange);
@@ -1677,6 +2318,88 @@
             });
         }
 
+        // Motif Geometry Shape Selector
+        const geomSelect = document.querySelector('#geometry-shape');
+        if (geomSelect) {
+            geomSelect.addEventListener('change', (e) => {
+                state.geometry = e.target.value;
+                if (state.blanketGrid && state.blanketGrid.length > 0) {
+                    drawBlanketCanvas(true);
+                }
+            });
+        }
+
+        // Photo-to-Palette AI Upload Handlers
+        const triggerPhotoBtn = document.querySelector('#trigger-photo-upload-btn');
+        const photoInput = document.querySelector('#photo-upload-input');
+        const applyPhotoBtn = document.querySelector('#apply-photo-palette-btn');
+
+        if (triggerPhotoBtn && photoInput) {
+            triggerPhotoBtn.addEventListener('click', () => photoInput.click());
+            photoInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    extractPhotoPalette(e.target.files[0]);
+                }
+            });
+        }
+
+        if (applyPhotoBtn) {
+            applyPhotoBtn.addEventListener('click', applyPhotoPaletteToState);
+        }
+
+        // Written Pattern Generator Handlers
+        const toggleWrittenBtn = document.querySelector('#toggle-written-instructions-btn');
+        if (toggleWrittenBtn) {
+            toggleWrittenBtn.addEventListener('click', generateWrittenInstructions);
+        }
+
+        const termsUsBtn = document.querySelector('#terms-us-btn');
+        const termsUkBtn = document.querySelector('#terms-uk-btn');
+        if (termsUsBtn && termsUkBtn) {
+            termsUsBtn.addEventListener('click', () => {
+                state.crochetTerms = 'US';
+                termsUsBtn.classList.add('active');
+                termsUkBtn.classList.remove('active');
+                generateWrittenInstructions();
+            });
+            termsUkBtn.addEventListener('click', () => {
+                state.crochetTerms = 'UK';
+                termsUkBtn.classList.add('active');
+                termsUsBtn.classList.remove('active');
+                generateWrittenInstructions();
+            });
+        }
+
+        // Pattern Sharing Button
+        const sharePatternBtn = document.querySelector('#share-pattern-btn');
+        if (sharePatternBtn) {
+            sharePatternBtn.addEventListener('click', shareCurrentPattern);
+        }
+
+        // Multi-Layer Border Designer UI events
+        const addBorderLayerBtn = document.querySelector('#add-border-layer-btn');
+        if (addBorderLayerBtn) {
+            addBorderLayerBtn.addEventListener('click', () => addBorderLayer('solid'));
+        }
+
+        const applyBorderPresetBtn = document.querySelector('#apply-border-preset-btn');
+        if (applyBorderPresetBtn) {
+            applyBorderPresetBtn.addEventListener('click', () => {
+                const presetVal = document.querySelector('#border-generator-preset')?.value || 'echo';
+                applyBorderPreset(presetVal);
+            });
+        }
+
+        // Clear locks button
+        const clearLocksBtn = document.querySelector('#clear-locks-btn');
+        if (clearLocksBtn) {
+            clearLocksBtn.addEventListener('click', () => {
+                state.lockedCells.clear();
+                updateLockControlsUI();
+                drawBlanketCanvas(true);
+            });
+        }
+
         const yarnUnitSelect = document.querySelector('#yarn-unit');
         if (yarnUnitSelect) {
             yarnUnitSelect.addEventListener('change', () => {
@@ -1715,9 +2438,69 @@
         }
     };
 
+    const shareCurrentPattern = async () => {
+        const payload = {
+            rows: state.rows,
+            cols: state.cols,
+            geometry: state.geometry,
+            borderLayers: state.borderLayers,
+            patterns: state.patterns,
+            blanketGrid: state.blanketGrid
+        };
+        const encoded = encodeURIComponent(JSON.stringify(payload));
+        const shareUrl = `${window.location.origin}${window.location.pathname}#share=${encoded}`;
+
+        if (window.NativeBridge) {
+            await window.NativeBridge.sharePattern({
+                title: `Blanket Pattern (${state.rows}x${state.cols})`,
+                text: `Check out my ${state.geometry} crochet blanket design!`,
+                url: shareUrl
+            });
+        }
+    };
+
+    const loadPatternFromUrlHash = () => {
+        if (location.hash && location.hash.startsWith('#share=')) {
+            try {
+                const encoded = location.hash.replace('#share=', '');
+                const decoded = JSON.parse(decodeURIComponent(encoded));
+                if (decoded && typeof decoded === 'object') {
+                    if (decoded.rows) state.rows = sanitizeInt(decoded.rows, 8, 1, 100);
+                    if (decoded.cols) state.cols = sanitizeInt(decoded.cols, 8, 1, 100);
+                    if (decoded.geometry && typeof decoded.geometry === 'string') state.geometry = escapeHtml(decoded.geometry);
+                    if (Array.isArray(decoded.borderLayers)) {
+                        state.borderLayers = decoded.borderLayers.map(l => ({
+                            id: typeof l.id === 'string' ? escapeHtml(l.id) : 'b-1',
+                            type: typeof l.type === 'string' ? escapeHtml(l.type) : 'solid',
+                            color: sanitizeHexColor(l.color)
+                        }));
+                    }
+                    if (Array.isArray(decoded.patterns)) {
+                        state.patterns = decoded.patterns.map(p => ({
+                            id: sanitizeInt(p.id, 0, 0, 10000),
+                            style: typeof p.style === 'string' ? escapeHtml(p.style) : 'classic',
+                            paletteIndex: sanitizeInt(p.paletteIndex, 0, 0, 100),
+                            colors: Array.isArray(p.colors) ? p.colors.map(c => sanitizeHexColor(c)) : ['#ffffff'],
+                            quantity: sanitizeInt(p.quantity, 1, 0, 10000),
+                            isLocked: Boolean(p.isLocked)
+                        }));
+                    }
+                    if (Array.isArray(decoded.blanketGrid)) state.blanketGrid = decoded.blanketGrid;
+                    
+                    renderBorderLayersList();
+                    renderPatternsList();
+                    drawBlanketCanvas(true);
+                    console.log('Loaded shared pattern from URL hash!');
+                }
+            } catch (err) {
+                console.warn('Failed to parse URL hash pattern:', err);
+            }
+        }
+    };
+
     const applyTheme = (theme) => {
         document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('blanket_theme', theme);
+        safeLocalStorageSet('blanket_theme', theme);
         const sunIcon = document.querySelector('#theme-icon-sun');
         const moonIcon = document.querySelector('#theme-icon-moon');
         if (sunIcon && moonIcon) {
@@ -1727,7 +2510,7 @@
     };
 
     const initTheme = () => {
-        const savedTheme = localStorage.getItem('blanket_theme') || 'dark';
+        const savedTheme = safeLocalStorageGet('blanket_theme', 'dark');
         applyTheme(savedTheme);
     };
 
@@ -1738,10 +2521,12 @@
         initTheme();
         initDefaultState();
         populateBorderColorDropdown();
+        renderBorderLayersList();
         renderPatternsList();
         updateDimensionsInfo();
         initHistory();
         bindEvents();
+        loadPatternFromUrlHash();
     });
 
 })();
