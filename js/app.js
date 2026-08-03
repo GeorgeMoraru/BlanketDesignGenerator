@@ -1145,9 +1145,22 @@
         const totalRows = innerRows + bWidth * 2;
         const totalCols = innerCols + bWidth * 2;
 
+        // Auto-scale cell size dynamically to fit viewport width and height without horizontal scrolling
+        const isMobile = window.innerWidth <= 768;
+        const availW = isMobile ? Math.min(window.innerWidth - 24, (canvas.clientWidth || window.innerWidth) - 24) : (canvas.clientWidth || 800);
+        const availH = isMobile ? Math.min(window.innerHeight - 180, (canvas.clientHeight || window.innerHeight) - 180) : (canvas.clientHeight || 700);
+        
+        const spacing = isMobile ? 3 : 6;
+        const padding = isMobile ? 12 : 24;
+        const cellW = Math.floor((availW - padding - (totalCols * spacing)) / totalCols);
+        const cellH = Math.floor((availH - padding - (totalRows * spacing)) / totalRows);
+        const calculatedCellSize = Math.max(14, Math.min(72, Math.min(cellW, cellH)));
+
         // Create table grid element
         const table = document.createElement('table');
         table.className = `blanket grid-${state.geometry || 'square'}`;
+        table.style.setProperty('--cell-size', `${calculatedCellSize}px`);
+        table.style.setProperty('--cell-spacing', `${spacing}px`);
         if (state.workMode) {
             table.classList.add('work-mode-active');
         }
@@ -2367,11 +2380,16 @@
             downloadPdfBtn.addEventListener('click', exportPDFBlueprint);
         }
 
-        // Download image floating button click
-        const downloadImageBtn = document.querySelector('#download-image-btn');
-        if (downloadImageBtn) {
-            downloadImageBtn.addEventListener('click', exportBlanketAsImage);
-        }
+        // Auto-rescale grid layout on window resize / mobile orientation change
+        let resizeTimer = null;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (state.blanketGrid && state.blanketGrid.length > 0) {
+                    drawBlanketCanvas(true);
+                }
+            }, 150);
+        });
 
         // Theme Toggle Button
         const themeToggleBtn = document.querySelector('#theme-toggle-btn');
