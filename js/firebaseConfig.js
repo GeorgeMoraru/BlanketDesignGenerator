@@ -153,9 +153,6 @@
         subscribeCloudDesigns
     };
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initFirebase);
-    } else {
-        initFirebase();
-    }
+    // Initialize immediately
+    initFirebase();
 })();
