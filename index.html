@@ -101,11 +101,11 @@
     </header>
 
     <main class="wrapper">
-        <!-- Primary Main Design Sidebar (Controls above Generate Design) -->
+        <!-- Primary Main Design Sidebar -->
         <aside class="design-sidebar">
             <header class="app-header">
                 <h1>Blanket Designer</h1>
-                <p>Configure size, geometry, and pattern palettes</p>
+                <p>Configure size, geometry, borders & pattern palettes</p>
             </header>
 
             <div id="settings-card" class="panel-card">
@@ -129,7 +129,32 @@
                     </select>
                 </div>
 
-                <div class="patterns-title-row">
+                <!-- Multi-Layer Border Patterns Section -->
+                <div class="setting-group border-designer-section" style="border-top: 1px solid var(--border-glass); padding-top: 14px; margin-top: 4px;">
+                    <div class="border-section-header">
+                        <label>Multi-Layer Border</label>
+                        <button id="add-border-layer-btn" class="btn btn-sm btn-secondary" type="button" title="Add concentric border round">+ Layer</button>
+                    </div>
+
+                    <div id="border-layers-list" class="border-layers-list">
+                        <!-- Rendered dynamically by app.js -->
+                    </div>
+
+                    <div class="setting-group" style="margin-top: 10px;">
+                        <label for="border-generator-preset">Auto-Color Preset</label>
+                        <div class="preset-input-row">
+                            <select id="border-generator-preset">
+                                <option value="echo" selected>Echo Inner Palette</option>
+                                <option value="contrast">Harmonious Contrast</option>
+                                <option value="ombre">Ombre Light-to-Dark</option>
+                                <option value="random">Randomized Stripes</option>
+                            </select>
+                            <button id="apply-border-preset-btn" class="btn btn-sm btn-secondary" type="button" title="Apply procedural color sequence">Apply</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="patterns-title-row" style="border-top: 1px solid var(--border-glass); padding-top: 14px; margin-top: 4px;">
                     <h2>Patterns</h2>
                     <span class="total-cells-badge" id="cell-count-badge">64 cells</span>
                 </div>
@@ -142,27 +167,6 @@
                     Add Pattern
                 </button>
             </div>  
-
-            <!-- Photo-to-Palette AI -->
-            <div id="photo-palette-card" class="panel-card">
-                <div class="card-header-row">
-                    <h2>Photo-to-Yarn AI</h2>
-                </div>
-                <p class="sync-hint">Upload a photo to extract dominant colors and match to commercial yarn brands.</p>
-                <div class="photo-upload-box">
-                    <input type="file" id="photo-upload-input" accept="image/*" style="display:none;" />
-                    <button id="trigger-photo-upload-btn" class="btn btn-secondary" type="button" style="width: 100%;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                        Upload Inspiration Photo
-                    </button>
-                </div>
-                <div id="photo-swatches-container" style="display:none; margin-top: 12px;">
-                    <div id="photo-swatches-list" class="photo-swatches-list"></div>
-                    <button id="apply-photo-palette-btn" class="btn btn-secondary" type="button" style="margin-top: 8px; width: 100%;">
-                        Apply Photo Palette to Pattern
-                    </button>
-                </div>
-            </div>
 
             <button id="generate-btn" class="btn btn-primary" type="button">
                 Generate Design
@@ -179,7 +183,7 @@
                     <h1>Settings</h1>
                     <div style="width: 28px;"></div> <!-- Spacer to center title -->
                 </div>
-                <p>User Account, Borders, Estimators & Exports</p>
+                <p>User Account, Photo AI, Estimators & Exports</p>
             </header>
 
             <!-- User Account Card (AT THE VERY TOP OF SETTINGS MENU) -->
@@ -206,6 +210,27 @@
                 </div>
             </div>
 
+            <!-- Photo-to-Palette AI (IN SETTINGS MENU) -->
+            <div id="photo-palette-card" class="panel-card">
+                <div class="card-header-row">
+                    <h2>Photo-to-Yarn AI</h2>
+                </div>
+                <p class="sync-hint">Upload a photo to extract dominant colors and match to commercial yarn brands.</p>
+                <div class="photo-upload-box">
+                    <input type="file" id="photo-upload-input" accept="image/*" style="display:none;" />
+                    <button id="trigger-photo-upload-btn" class="btn btn-secondary" type="button" style="width: 100%;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                        Upload Inspiration Photo
+                    </button>
+                </div>
+                <div id="photo-swatches-container" style="display:none; margin-top: 12px;">
+                    <div id="photo-swatches-list" class="photo-swatches-list"></div>
+                    <button id="apply-photo-palette-btn" class="btn btn-secondary" type="button" style="margin-top: 8px; width: 100%;">
+                        Apply Photo Palette to Pattern
+                    </button>
+                </div>
+            </div>
+
             <!-- Application Settings (Unit System) -->
             <div id="app-settings-card" class="panel-card">
                 <div class="card-header-row">
@@ -217,33 +242,6 @@
                         <option value="metric" selected>Metric (Meters / cm)</option>
                         <option value="imperial">Imperial (Yards / in)</option>
                     </select>
-                </div>
-            </div>
-
-            <!-- Multi-Layer Border Designer -->
-            <div id="border-designer-card" class="panel-card">
-                <div class="setting-group border-designer-section">
-                    <div class="border-section-header">
-                        <label>Multi-Layer Border</label>
-                        <button id="add-border-layer-btn" class="btn btn-sm btn-secondary" type="button" title="Add concentric border round">+ Layer</button>
-                    </div>
-
-                    <div id="border-layers-list" class="border-layers-list">
-                        <!-- Rendered dynamically by app.js -->
-                    </div>
-
-                    <div class="setting-group" style="margin-top: 10px;">
-                        <label for="border-generator-preset">Auto-Color Preset</label>
-                        <div class="preset-input-row">
-                            <select id="border-generator-preset">
-                                <option value="echo" selected>Echo Inner Palette</option>
-                                <option value="contrast">Harmonious Contrast</option>
-                                <option value="ombre">Ombre Light-to-Dark</option>
-                                <option value="random">Randomized Stripes</option>
-                            </select>
-                            <button id="apply-border-preset-btn" class="btn btn-sm btn-secondary" type="button" title="Apply procedural color sequence">Apply</button>
-                        </div>
-                    </div>
                 </div>
             </div>
 
