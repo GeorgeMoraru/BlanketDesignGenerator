@@ -687,34 +687,40 @@ table.blanket {
     );
 }
 
-/* Animations */
+/* 60 FPS GPU Hardware Accelerated Animations & Easing */
 @keyframes slideIn {
     from {
         opacity: 0;
-        transform: translateY(-10px);
+        transform: translate3d(0, -12px, 0);
     }
     to {
         opacity: 1;
-        transform: translateY(0);
+        transform: translate3d(0, 0, 0);
     }
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+        transform: translate3d(0, 8px, 0);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
 }
 
 @keyframes popIn {
     0% {
         opacity: 0;
-        transform: scale(0.3);
+        transform: scale3d(0.3, 0.3, 1);
     }
     70% {
-        transform: scale(1.05);
+        transform: scale3d(1.05, 1.05, 1);
     }
     100% {
         opacity: 1;
-        transform: scale(1);
+        transform: scale3d(1, 1, 1);
     }
 }
 
@@ -1331,15 +1337,17 @@ table.blanket td.cellSquare {
 
 .drag-ghost {
     position: fixed;
+    top: 0;
+    left: 0;
     pointer-events: none;
-    z-index: 1000;
-    width: 60px;
-    height: 60px;
+    z-index: 10000;
+    width: 48px;
+    height: 48px;
     border-radius: 8px;
     box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 0 0 2px var(--accent);
-    opacity: 0.85;
-    transform: translate(-50%, -50%) scale(1.1);
-    transition: transform 0.05s ease;
+    opacity: 0.88;
+    will-change: transform;
+    backface-visibility: hidden;
 }
 
 /* Mobile Safe Areas (Capacitor iOS Notch & Android gesture bar support) */

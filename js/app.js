@@ -606,15 +606,13 @@
                 ghost.classList.add(styleDetails.className);
                 ghost.style = getPatternColorVariables(pattern.colors);
             }
-            ghost.style.left = `${e.clientX}px`;
-            ghost.style.top = `${e.clientY}px`;
+            ghost.style.transform = `translate3d(${e.clientX - 24}px, ${e.clientY - 24}px, 0)`;
             document.body.appendChild(ghost);
             touchDragState.ghostEl = ghost;
         }
 
         if (touchDragState.isDragging && touchDragState.ghostEl) {
-            touchDragState.ghostEl.style.left = `${e.clientX}px`;
-            touchDragState.ghostEl.style.top = `${e.clientY}px`;
+            touchDragState.ghostEl.style.transform = `translate3d(${e.clientX - 24}px, ${e.clientY - 24}px, 0)`;
 
             const targetEl = document.elementFromPoint(e.clientX, e.clientY);
             document.querySelectorAll('.cellSquare.drag-over').forEach(c => c.classList.remove('drag-over'));
