@@ -1125,6 +1125,8 @@
             
             // Perform layout computation
             state.blanketGrid = solveBlanketGrid();
+        } else if (!state.blanketGrid || state.blanketGrid.length !== state.rows || !state.blanketGrid[0] || state.blanketGrid[0].length !== state.cols) {
+            state.blanketGrid = solveBlanketGrid();
         }
 
         const canvas = document.querySelector('#blanket-container');
@@ -1205,8 +1207,8 @@
                         cell.appendChild(badge);
                     }
 
-                    const patternId = state.blanketGrid[inR][inC];
-                    const pattern = state.patterns.find(p => p.id === patternId);
+                    const patternId = (state.blanketGrid && state.blanketGrid[inR] && state.blanketGrid[inR][inC] !== undefined) ? state.blanketGrid[inR][inC] : null;
+                    const pattern = patternId !== null ? state.patterns.find(p => p.id === patternId) : null;
 
                     if (pattern) {
                         const styleDetails = getPatternStyleDetails(pattern.style);
