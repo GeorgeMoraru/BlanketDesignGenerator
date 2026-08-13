@@ -187,9 +187,10 @@
         borderWidth: 2,
         borderColor: '#27212b',
         borderStyle: 'solid',
+        paletteIndex: 0,
         borderLayers: [
-            { id: 'b-1', type: 'solid', color: '#27212b' },
-            { id: 'b-2', type: 'granny-cluster', color: '#e6ded2' }
+            { id: 'b-1', type: 'solid', color: '#d8c1c5' },
+            { id: 'b-2', type: 'granny-cluster', color: '#b49b9c' }
         ],
         patterns: [],
         blanketGrid: [],
@@ -234,13 +235,14 @@
 
     // Add a new pattern to state
     const addPatternToState = (style = 'solid') => {
-        const palette = generateHarmoniousPalette();
+        const palIndex = state.paletteIndex !== undefined ? state.paletteIndex : 0;
+        const colors = [...COMMERCIAL_PALETTES[palIndex].colors];
         const pattern = {
             id: state.nextPatternId++,
             style: style,
             quantity: 1,
-            paletteIndex: palette.index,
-            colors: palette.colors,
+            paletteIndex: palIndex,
+            colors: colors,
             isLocked: false
         };
         state.patterns.push(pattern);
@@ -408,16 +410,6 @@
                 drawBlanketCanvas(true);
             });
 
-            const colorInput = document.createElement('input');
-            colorInput.type = 'color';
-            colorInput.className = 'border-layer-color-picker';
-            colorInput.value = layer.color || '#27212b';
-            colorInput.title = 'Layer Color';
-            colorInput.addEventListener('input', (e) => {
-                layer.color = e.target.value;
-                drawBlanketCanvas(true);
-            });
-
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
             removeBtn.className = 'btn-remove-layer';
@@ -429,7 +421,6 @@
 
             item.appendChild(num);
             item.appendChild(select);
-            item.appendChild(colorInput);
             item.appendChild(removeBtn);
 
             container.appendChild(item);
@@ -441,8 +432,9 @@
     const addBorderLayer = (type = 'solid', color = null) => {
         if (!state.borderLayers) state.borderLayers = [];
         if (!color) {
-            const allColors = state.patterns.flatMap(p => p.colors);
-            color = allColors[state.borderLayers.length % Math.max(1, allColors.length)] || '#27212b';
+            const palIndex = state.paletteIndex !== undefined ? state.paletteIndex : 0;
+            const colors = COMMERCIAL_PALETTES[palIndex].colors;
+            color = colors[state.borderLayers.length % colors.length] || '#27212b';
         }
         const newLayer = {
             id: `b-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -934,13 +926,6 @@
                 styleOptions += `<option value="${key}" ${isSelected}>${PATTERN_STYLES[key].name}</option>`;
             });
 
-            // Create Palette select options
-            let paletteOptions = '';
-            COMMERCIAL_PALETTES.forEach((pal, idx) => {
-                const isSelected = pattern.paletteIndex === idx ? 'selected' : '';
-                paletteOptions += `<option value="${idx}" ${isSelected}>${pal.name}</option>`;
-            });
-
             const colorVars = getPatternColorVariables(pattern.colors);
             const styleDetails = getPatternStyleDetails(pattern.style);
 
@@ -963,12 +948,9 @@
                         </button>
                     </div>
                 </div>
-                <div class="pattern-inputs-grid">
-                    <select class="pattern-style-select" data-id="${pattern.id}">
+                <div class="pattern-inputs-grid" style="display: flex; gap: 8px;">
+                    <select class="pattern-style-select" data-id="${pattern.id}" style="width: 100%;">
                         ${styleOptions}
-                    </select>
-                    <select class="pattern-palette-select" data-id="${pattern.id}" style="margin-top: 8px;">
-                        ${paletteOptions}
                     </select>
                 </div>
             `;
@@ -990,20 +972,6 @@
                         });
                         // Add new
                         previewSymbol.classList.add(getPatternStyleDetails(matched.style).className);
-                    }
-                }
-            });
-
-            const paletteSelect = item.querySelector('.pattern-palette-select');
-            paletteSelect.addEventListener('change', (e) => {
-                const pId = parseInt(e.target.dataset.id);
-                const matched = state.patterns.find(p => p.id === pId);
-                if (matched) {
-                    matched.paletteIndex = parseInt(e.target.value);
-                    matched.colors = [...COMMERCIAL_PALETTES[matched.paletteIndex].colors];
-                    const previewSymbol = item.querySelector('.patternSymbol');
-                    if (previewSymbol) {
-                        previewSymbol.style = getPatternColorVariables(matched.colors);
                     }
                 }
             });
@@ -1390,12 +1358,30 @@
     // 7. Drawer, History, Export & Import Controllers
     // =========================================================================
     
+    // Toggle Design Sidebar
+    const toggleSidebar = (open) => {
+        const sidebar = document.querySelector('.design-sidebar');
+        const overlay = document.querySelector('#menu-overlay');
+        if (sidebar) sidebar.classList.toggle('open', open);
+        if (overlay) {
+            overlay.classList.toggle('active', open);
+            if (open) {
+                toggleDrawer(false);
+            }
+        }
+    };
+
     // Toggle Settings Drawer
     const toggleDrawer = (open) => {
         const drawer = document.querySelector('.settings-container');
         const overlay = document.querySelector('#menu-overlay');
         if (drawer) drawer.classList.toggle('open', open);
-        if (overlay) overlay.classList.toggle('active', open);
+        if (overlay) {
+            overlay.classList.toggle('active', open);
+            if (open) {
+                toggleSidebar(false);
+            }
+        }
     };
 
     // Initialize history from IndexedDB (localforage) with migration from localStorage
@@ -1501,14 +1487,23 @@
         state.patterns = JSON.parse(JSON.stringify(item.patterns));
         state.blanketGrid = JSON.parse(JSON.stringify(item.grid));
         
+        if (item.borderLayers) {
+            state.borderLayers = JSON.parse(JSON.stringify(item.borderLayers));
+        } else {
+            state.borderLayers = [
+                { id: 'b-1', type: 'solid', color: state.borderColor },
+                { id: 'b-2', type: 'granny-cluster', color: '#e6ded2' }
+            ];
+        }
+
+        if (state.patterns && state.patterns.length > 0) {
+            state.paletteIndex = state.patterns[0].paletteIndex || 0;
+        }
+        
         const rowsInput = document.querySelector('#rows');
         const colsInput = document.querySelector('#columns');
-        const bWidthSelect = document.querySelector('#border-width');
-        const bColorSelect = document.querySelector('#border-color');
         if (rowsInput) rowsInput.value = state.rows;
         if (colsInput) colsInput.value = state.cols;
-        if (bWidthSelect) bWidthSelect.value = state.borderWidth;
-        if (bColorSelect) bColorSelect.value = state.borderColor;
         
         let maxPatternId = 0;
         state.patterns.forEach(p => {
@@ -1516,75 +1511,11 @@
         });
         state.nextPatternId = maxPatternId;
         
+        populateGlobalPaletteDropdown();
+        renderBorderLayersList();
         renderPatternsList();
         updateDimensionsInfo();
-        
-        const canvas = document.querySelector('#blanket-container');
-        if (canvas) {
-            const bWidth = state.borderWidth || 0;
-            const bColor = state.borderColor || '#27212b';
-            const totalRows = state.rows + bWidth * 2;
-            const totalCols = state.cols + bWidth * 2;
-
-            const table = document.createElement('table');
-            table.className = 'blanket';
-            if (state.workMode) {
-                table.classList.add('work-mode-active');
-            }
-            
-            for (let r = 0; r < totalRows; r++) {
-                const row = document.createElement('tr');
-                for (let c = 0; c < totalCols; c++) {
-                    const cell = document.createElement('td');
-                    cell.className = 'cellSquare';
-                    
-                    const isBorder = r < bWidth || r >= totalRows - bWidth || c < bWidth || c >= totalCols - bWidth;
-
-                    if (isBorder) {
-                        cell.classList.add('border-cell');
-                        cell.classList.add('granny-solid');
-                        cell.style.backgroundColor = bColor;
-                        cell.style.setProperty('--color-1', bColor);
-                        cell.title = 'Border square';
-
-                        const isTop = r < bWidth;
-                        const isBottom = r >= totalRows - bWidth;
-                        const isLeft = c < bWidth;
-                        const isRight = c >= totalCols - bWidth;
-
-                        if ((isTop || isBottom) && (isLeft || isRight)) {
-                            cell.classList.add('border-corner');
-                        }
-                    } else {
-                        const inR = r - bWidth;
-                        const inC = c - bWidth;
-                        const patternId = state.blanketGrid[inR][inC];
-                        const pattern = state.patterns.find(p => p.id === patternId);
-                        
-                        if (pattern) {
-                            const styleDetails = getPatternStyleDetails(pattern.style);
-                            cell.classList.add(styleDetails.className);
-                            cell.style = getPatternColorVariables(pattern.colors);
-                        } else {
-                            cell.classList.add('granny-solid');
-                            cell.style = '--color-1: #1e294b;';
-                        }
-
-                        const lockKey = `${inR}-${inC}`;
-                        if (state.lockedCells.has(lockKey)) {
-                            cell.classList.add('locked');
-                        }
-                    }
-                    
-                    const delay = (r + c) * 15;
-                    cell.style.animationDelay = `${delay}ms`;
-                    row.appendChild(cell);
-                }
-                table.appendChild(row);
-            }
-            canvas.innerHTML = '';
-            canvas.appendChild(table);
-        }
+        drawBlanketCanvas(true);
         
         const downloadBtn = document.querySelector('#download-image-btn');
         if (downloadBtn) downloadBtn.style.display = 'flex';
@@ -2121,41 +2052,18 @@
         link.href = canvas.toDataURL('image/png');
         link.click();
     };
-    const populateBorderColorDropdown = () => {
-        const bColorSelect = document.querySelector('#border-color');
-        if (!bColorSelect) return;
-        bColorSelect.innerHTML = '';
+    const populateGlobalPaletteDropdown = () => {
+        const globalPaletteSelect = document.querySelector('#global-palette-select');
+        if (!globalPaletteSelect) return;
+        globalPaletteSelect.innerHTML = '';
         
-        const neutralsGroup = document.createElement('optgroup');
-        neutralsGroup.label = "Neutral Basics";
-        const n1 = document.createElement('option');
-        n1.value = "#27212b";
-        n1.textContent = "Walnut Espresso (Default)";
-        neutralsGroup.appendChild(n1);
-        const n2 = document.createElement('option');
-        n2.value = "#f8fafc";
-        n2.textContent = "Cream / Off-White";
-        neutralsGroup.appendChild(n2);
-        bColorSelect.appendChild(neutralsGroup);
-        
-        COMMERCIAL_PALETTES.forEach(pal => {
-            const group = document.createElement('optgroup');
-            group.label = pal.name;
-            pal.colors.forEach((hex, i) => {
-                const opt = document.createElement('option');
-                opt.value = hex;
-                opt.textContent = pal.shades[i];
-                group.appendChild(opt);
-            });
-            bColorSelect.appendChild(group);
+        COMMERCIAL_PALETTES.forEach((pal, idx) => {
+            const opt = document.createElement('option');
+            opt.value = idx;
+            opt.textContent = `${pal.brand} - ${pal.name}`;
+            if (state.paletteIndex === idx) opt.selected = true;
+            globalPaletteSelect.appendChild(opt);
         });
-        
-        // Restore saved state if valid
-        if (state.borderColor) {
-            bColorSelect.value = state.borderColor;
-        } else {
-            bColorSelect.value = '#27212b';
-        }
     };
 
     // =========================================================================
@@ -2164,9 +2072,6 @@
     const bindEvents = () => {
         const rowsInput = document.querySelector('#rows');
         const colsInput = document.querySelector('#columns');
-        const borderWidthInput = document.querySelector('#border-width');
-        const borderStyleInput = document.querySelector('#border-style');
-        const borderColorInput = document.querySelector('#border-color');
         
         const debouncedDimensionsChange = debounce(onDimensionsChange, 250);
         if (rowsInput) {
@@ -2177,26 +2082,41 @@
             colsInput.addEventListener('change', onDimensionsChange);
             colsInput.addEventListener('input', debouncedDimensionsChange);
         }
-        if (borderWidthInput) {
-            borderWidthInput.addEventListener('change', onDimensionsChange);
-        }
-        if (borderStyleInput) {
-            borderStyleInput.addEventListener('change', () => {
-                state.borderStyle = borderStyleInput.value;
-                if (state.blanketGrid && state.blanketGrid.length > 0) {
-                    drawBlanketCanvas();
-                }
-            });
-        }
-        if (borderColorInput) {
-            borderColorInput.addEventListener('change', () => {
-                state.borderColor = borderColorInput.value;
-                const borderCells = document.querySelectorAll('.border-cell');
-                borderCells.forEach(cell => {
-                    cell.style.backgroundColor = state.borderColor;
-                    cell.style.setProperty('--color-1', state.borderColor);
+
+        const globalPaletteSelect = document.querySelector('#global-palette-select');
+        if (globalPaletteSelect) {
+            globalPaletteSelect.addEventListener('change', (e) => {
+                const idx = parseInt(e.target.value);
+                state.paletteIndex = idx;
+                const colors = COMMERCIAL_PALETTES[idx].colors;
+                
+                // Update patterns colors
+                state.patterns.forEach(p => {
+                    p.paletteIndex = idx;
+                    p.colors = [...colors];
                 });
+                
+                // Update border layers colors
+                if (state.borderLayers) {
+                    state.borderLayers.forEach((layer, i) => {
+                        layer.color = colors[i % colors.length];
+                    });
+                }
+                
+                // Rerender lists & draw
+                renderPatternsList();
+                renderBorderLayersList();
+                drawBlanketCanvas(true);
             });
+        }
+
+        const sidebarToggleBtn = document.querySelector('#sidebar-toggle-btn');
+        const sidebarCloseBtn = document.querySelector('#sidebar-close-btn');
+        if (sidebarToggleBtn) {
+            sidebarToggleBtn.addEventListener('click', () => toggleSidebar(true));
+        }
+        if (sidebarCloseBtn) {
+            sidebarCloseBtn.addEventListener('click', () => toggleSidebar(false));
         }
 
         const addPatternBtn = document.querySelector('#add-pattern-btn');
@@ -2273,7 +2193,10 @@
         // Overlay backdrop click
         const menuOverlay = document.querySelector('#menu-overlay');
         if (menuOverlay) {
-            menuOverlay.addEventListener('click', () => toggleDrawer(false));
+            menuOverlay.addEventListener('click', () => {
+                toggleDrawer(false);
+                toggleSidebar(false);
+            });
         }
 
 
@@ -2407,6 +2330,7 @@
             rows: state.rows,
             cols: state.cols,
             geometry: state.geometry,
+            paletteIndex: state.paletteIndex,
             borderLayers: state.borderLayers,
             patterns: state.patterns,
             blanketGrid: state.blanketGrid
@@ -2451,6 +2375,13 @@
                     }
                     if (Array.isArray(decoded.blanketGrid)) state.blanketGrid = decoded.blanketGrid;
                     
+                    if (decoded.paletteIndex !== undefined) {
+                        state.paletteIndex = sanitizeInt(decoded.paletteIndex, 0, 0, 100);
+                    } else if (state.patterns.length > 0) {
+                        state.paletteIndex = state.patterns[0].paletteIndex || 0;
+                    }
+
+                    populateGlobalPaletteDropdown();
                     renderBorderLayersList();
                     renderPatternsList();
                     drawBlanketCanvas(true);
@@ -2568,7 +2499,7 @@
     const initApp = () => {
         initTheme();
         initDefaultState();
-        populateBorderColorDropdown();
+        populateGlobalPaletteDropdown();
         renderBorderLayersList();
         renderPatternsList();
         updateDimensionsInfo();

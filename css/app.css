@@ -172,6 +172,10 @@ body {
     transform: scale(0.95);
 }
 
+#sidebar-toggle-btn {
+    display: none;
+}
+
 .wrapper {
     display: flex;
     flex-direction: row;
@@ -199,21 +203,46 @@ body {
 
 @media (max-width: 768px) {
     .wrapper {
-        flex-direction: column;
+        flex-direction: row;
         height: calc(100vh - 56px);
         height: calc(100dvh - 56px);
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        overflow: hidden;
     }
     .design-sidebar {
-        width: 100%;
-        min-width: 100%;
-        max-height: 55vh;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        border-right: none;
-        border-bottom: 1px solid var(--border-glass);
+        position: fixed;
+        top: 56px;
+        left: -320px;
+        width: 320px;
+        min-width: 320px;
+        height: calc(100vh - 56px);
+        height: calc(100dvh - 56px);
+        z-index: 150;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-right: 1px solid var(--border-glass);
+        border-bottom: none;
+        box-shadow: none;
         padding: 16px 16px 24px 16px;
+    }
+    .design-sidebar.open {
+        transform: translateX(320px);
+        box-shadow: 10px 0 40px rgba(0, 0, 0, 0.8);
+    }
+    #sidebar-toggle-btn {
+        display: inline-flex;
+    }
+    #sidebar-close-btn {
+        display: inline-flex !important;
+    }
+    .sidebar-spacer {
+        display: block !important;
+    }
+
+    /* Mobile cell radius overrides - prevent them from looking like circles */
+    .cellSquare, .cellSquare.border-cell {
+        border-radius: 2px !important;
+    }
+    .cellSquare.border-corner {
+        border-radius: 4px !important;
     }
 }
 
