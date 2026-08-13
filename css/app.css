@@ -1480,31 +1480,31 @@ body {
 
 /* Hexagon Honeycomb */
 table.blanket.grid-hexagon {
-    padding-left: calc(var(--cell-size) * 0.3 + 12px) !important;
-    padding-right: calc(var(--cell-size) * 0.3 + 12px) !important;
+    border-collapse: separate;
+    border-spacing: 0px !important;
 }
 
-table.blanket.grid-hexagon td.cellSquare {
-    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+table.blanket.grid-hexagon td.cellSquare:not(.border-cell) {
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
     border-radius: 0 !important;
-    margin: -6px 0;
 }
 
-table.blanket.grid-hexagon tr:nth-child(odd) {
-    transform: translateX(calc((var(--cell-size) + var(--cell-spacing, 0px)) * 0.25));
-}
-
-table.blanket.grid-hexagon tr:nth-child(even) {
-    transform: translateX(calc((var(--cell-size) + var(--cell-spacing, 0px)) * -0.25));
+/* Ensure border cells remain solid and unclipped across all geometries */
+table.blanket.grid-hexagon td.cellSquare.border-cell,
+table.blanket.grid-triangle td.cellSquare.border-cell,
+table.blanket.grid-stripe td.cellSquare.border-cell {
+    clip-path: none !important;
+    border-radius: 0 !important;
+    transform: none !important;
 }
 
 /* Isometric Triangles */
-table.blanket.grid-triangle td.cellSquare.tri-up {
+table.blanket.grid-triangle td.cellSquare:not(.border-cell).tri-up {
     clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
     border-radius: 0 !important;
 }
 
-table.blanket.grid-triangle td.cellSquare.tri-down {
+table.blanket.grid-triangle td.cellSquare:not(.border-cell).tri-down {
     clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
     border-radius: 0 !important;
 }
