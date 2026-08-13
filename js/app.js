@@ -989,6 +989,7 @@
     };
 
     const drawBlanketCanvas = (preserveGrid = false) => {
+        updateBorderLayersFromState();
         if (!preserveGrid) {
             const rowsInput = document.querySelector('#rows');
             const colsInput = document.querySelector('#columns');
@@ -1017,6 +1018,12 @@
                 addPatternToState('classic');
                 addPatternToState('flower');
             }
+
+            const colors = COMMERCIAL_PALETTES[state.paletteIndex].colors;
+            state.patterns.forEach(p => {
+                p.paletteIndex = state.paletteIndex;
+                p.colors = [...colors];
+            });
 
             redistributeQuantities();
             renderPatternsList();
