@@ -1062,7 +1062,7 @@
         const availW = isMobile ? Math.min(window.innerWidth - 24, (canvas.clientWidth || window.innerWidth) - 24) : (canvas.clientWidth || 800);
         const availH = isMobile ? Math.min(window.innerHeight - 180, (canvas.clientHeight || window.innerHeight) - 180) : (canvas.clientHeight || 700);
         
-        const spacing = isMobile ? 3 : 6;
+        const spacing = isMobile ? 1.5 : 3;
         let padding = isMobile ? 12 : 24;
         if (state.geometry === 'hexagon') {
             padding += isMobile ? 24 : 48;
