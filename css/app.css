@@ -236,14 +236,6 @@ body {
     .sidebar-spacer {
         display: block !important;
     }
-
-    /* Mobile cell radius overrides - prevent them from looking like circles */
-    .cellSquare, .cellSquare.border-cell {
-        border-radius: 2px !important;
-    }
-    .cellSquare.border-corner {
-        border-radius: 4px !important;
-    }
 }
 
 /* Sidebar Design (Drawer sliding from right) */
@@ -1669,4 +1661,16 @@ table.blanket.grid-stripe td.cellSquare:not(.border-cell) {
     border: 1px solid rgba(91, 192, 190, 0.2);
     padding: 4px 10px;
     border-radius: 20px;
+}
+
+/* Ensure mobile overrides take cascading precedence */
+@media (max-width: 768px) {
+    .cellSquare, 
+    .cellSquare.border-cell,
+    table.blanket td.cellSquare {
+        border-radius: 2px !important;
+    }
+    .cellSquare.border-corner {
+        border-radius: 4px !important;
+    }
 }
