@@ -305,6 +305,47 @@
             }
         }
 
+        if (state.geometry === 'stripe') {
+            for (let r = 0; r < rows; r++) {
+                let lockedId = null;
+                for (let c = 0; c < cols; c++) {
+                    if (grid[r][c] !== null) {
+                        lockedId = grid[r][c];
+                        break;
+                    }
+                }
+
+                let chosenId = lockedId;
+                if (chosenId === null) {
+                    const topNeighbor = r > 0 ? grid[r - 1][0] : null;
+                    let available = remainingQuantities.filter(p => p.qty > 0);
+                    if (available.length === 0) {
+                        available = state.patterns.map(p => ({ id: p.id, qty: 999 }));
+                    }
+                    let options = available.filter(p => p.id !== topNeighbor);
+                    if (options.length === 0) {
+                        options = available;
+                    }
+                    const chosen = options[Math.floor(Math.random() * options.length)];
+                    chosenId = chosen.id;
+                    const rem = remainingQuantities.find(p => p.id === chosenId);
+                    if (rem) {
+                        rem.qty = Math.max(0, rem.qty - cols);
+                    }
+                } else {
+                    const rem = remainingQuantities.find(p => p.id === chosenId);
+                    if (rem) {
+                        rem.qty = Math.max(0, rem.qty - cols);
+                    }
+                }
+
+                for (let c = 0; c < cols; c++) {
+                    grid[r][c] = chosenId;
+                }
+            }
+            return grid;
+        }
+
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
                 if (grid[r][c] !== null) continue; // Skip locked cells

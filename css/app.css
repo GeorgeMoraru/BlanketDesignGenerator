@@ -1445,6 +1445,17 @@ table.blanket.grid-triangle td.cellSquare.tri-down {
     border-radius: 0 !important;
 }
 
+/* Stripe Rows (Continuous) Geometry */
+table.blanket.grid-stripe {
+    border-collapse: separate;
+    border-spacing: 0 var(--cell-spacing, 6px) !important;
+}
+
+table.blanket.grid-stripe td.cellSquare:not(.border-cell) {
+    border-radius: 0 !important;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 1px 0 rgba(0,0,0,0.1);
+}
+
 /* C2C Diagonal Badge Overlay */
 .c2c-badge {
     position: absolute;
