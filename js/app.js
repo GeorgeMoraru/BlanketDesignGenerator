@@ -193,6 +193,30 @@
             brand: "Scheepjes",
             colors: ["#8d6e63", "#d7ccc8", "#90caf9", "#1565c0"],
             shades: ["Chestnut (2602)", "Clay (2605)", "Sky Blue (2610)", "Royal Indigo (2615)"]
+        },
+        {
+            name: "Stylecraft Special DK - Neon Dream",
+            brand: "Stylecraft",
+            colors: ["#ff007f", "#39ff14", "#00f0ff", "#ff5f00"],
+            shades: ["Neon Pink (1254)", "Neon Lime (1256)", "Neon Turquoise (1258)", "Neon Orange (1260)"]
+        },
+        {
+            name: "Paintbox Yarns - Carnival Festival",
+            brand: "Paintbox Yarns",
+            colors: ["#d500f9", "#ffea00", "#00e5ff", "#ff6d00"],
+            shades: ["Fuchsia Blast (160)", "Lemon Drop (115)", "Turquoise Tint (130)", "Tangerine (116)"]
+        },
+        {
+            name: "Scheepjes - Technicolor Rainbow",
+            brand: "Scheepjes",
+            colors: ["#ff1744", "#651fff", "#00e676", "#ff9100"],
+            shades: ["Hot Cherry (410)", "Ultra Violet (412)", "Shamrock (415)", "Electric Mandarin (418)"]
+        },
+        {
+            name: "Hobbii - Retro Pop Candy",
+            brand: "Hobbii",
+            colors: ["#ff4081", "#18ffff", "#b2ff59", "#ffd740"],
+            shades: ["Pink Bubblegum (088)", "Blueberry Ice (092)", "Key Lime (095)", "Lemon Drop (099)"]
         }
     ];
 
