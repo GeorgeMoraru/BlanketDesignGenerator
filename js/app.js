@@ -755,9 +755,8 @@
     const updateDimensionsInfo = () => {
         const rowsInput = document.querySelector('#rows');
         const colsInput = document.querySelector('#columns');
-        const bWidthSelect = document.querySelector('#border-width');
-        const bStyleSelect = document.querySelector('#border-style');
-        const bColorSelect = document.querySelector('#border-color');
+        const bWidthSelect = document.querySelector('#border-width-select');
+        const bStyleSelect = document.querySelector('#border-pattern-select');
         
         if (rowsInput) {
             const rVal = parseInt(rowsInput.value);
@@ -772,9 +771,6 @@
         }
         if (bStyleSelect) {
             state.borderStyle = bStyleSelect.value || 'solid';
-        }
-        if (bColorSelect) {
-            state.borderColor = bColorSelect.value || '#27212b';
         }
 
         const bWidth = state.borderWidth;
@@ -2211,20 +2207,6 @@
         const sharePatternBtn = document.querySelector('#share-pattern-btn');
         if (sharePatternBtn) {
             sharePatternBtn.addEventListener('click', shareCurrentPattern);
-        }
-
-        // Multi-Layer Border Designer UI events
-        const addBorderLayerBtn = document.querySelector('#add-border-layer-btn');
-        if (addBorderLayerBtn) {
-            addBorderLayerBtn.addEventListener('click', () => addBorderLayer('solid'));
-        }
-
-        const applyBorderPresetBtn = document.querySelector('#apply-border-preset-btn');
-        if (applyBorderPresetBtn) {
-            applyBorderPresetBtn.addEventListener('click', () => {
-                const presetVal = document.querySelector('#border-generator-preset')?.value || 'echo';
-                applyBorderPreset(presetVal);
-            });
         }
 
         // Clear locks button
