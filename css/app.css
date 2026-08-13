@@ -1211,13 +1211,28 @@ table.blanket.work-mode-active td:hover {
     cursor: pointer;
 }
 
-/* Border Styles */
-.cellSquare.border-cell.border-ribbed {
-    background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.15) 6px, transparent 6px, transparent 12px);
+/* Border Pattern Styles */
+.cellSquare.border-cell.border-ribbed,
+.cellSquare.border-cell.stitch-ribbed {
+    background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0px, rgba(255, 255, 255, 0.2) 3px, transparent 3px, transparent 6px);
 }
 
-.cellSquare.border-cell.border-corner-accent {
-    box-shadow: inset 0 0 0 2px var(--accent), 0 4px 8px rgba(0, 0, 0, 0.5);
+.cellSquare.border-cell.border-granny-cluster,
+.cellSquare.border-cell.stitch-granny-cluster {
+    background-image: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.22) 0px, rgba(255, 255, 255, 0.22) 8px, transparent 8px, transparent 12px);
+    background-size: 12px 100%;
+}
+
+.cellSquare.border-cell.border-moss,
+.cellSquare.border-cell.stitch-moss {
+    background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.2) 0, rgba(255, 255, 255, 0.2) 4px, transparent 4px, transparent 8px);
+}
+
+.cellSquare.border-cell.border-shell,
+.cellSquare.border-cell.stitch-scallop {
+    background-image: radial-gradient(circle at 50% 0%, transparent 60%, rgba(255, 255, 255, 0.25) 61%);
+    background-size: 16px 12px;
+    background-repeat: repeat-x;
 }
 
 .cellSquare.border-cell.border-checker {
