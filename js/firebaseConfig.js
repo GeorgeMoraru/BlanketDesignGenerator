@@ -62,6 +62,11 @@
 
     // Google Sign-In helper with explicit error diagnostics & fallback
     const loginWithGoogle = async () => {
+        if (firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith('__')) {
+            alert('Firebase credentials placeholder detected.\n\nTo enable Google Sign-In locally, create js/firebaseConfig.local.js with your Firebase credentials, or deploy to GitHub Pages with repository secrets configured.');
+            return;
+        }
+
         if (!auth) initFirebase();
 
         // If CDN script load was slightly delayed, poll for up to 3 seconds
@@ -85,7 +90,11 @@
             const result = await auth.signInWithPopup(provider);
             return result;
         } catch (err) {
-            console.warn('[Google Login] signInWithPopup error:', err.code, err.message);
+            console.warn('[Google Login] signInWithPopup info:', err.code, err.message);
+            if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+                // User intentionally closed/cancelled the popup window - do nothing
+                return;
+            }
             if (err.code === 'auth/unauthorized-domain') {
                 alert(`Firebase Auth Error (unauthorized-domain):\nThe domain "${window.location.hostname}" is not authorized in your Firebase Console.\n\nPlease add "${window.location.hostname}" under Firebase Console -> Authentication -> Settings -> Authorized Domains.`);
                 throw err;
@@ -94,8 +103,8 @@
                 alert(`Firebase Auth Error (operation-not-allowed):\nGoogle Sign-In is disabled in your Firebase Console.\n\nPlease go to Firebase Console -> Authentication -> Sign-in method -> Google and enable it.`);
                 throw err;
             }
-            if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
-                console.log('[Google Login] Popup blocked/closed, falling back to signInWithRedirect...');
+            if (err.code === 'auth/popup-blocked') {
+                console.log('[Google Login] Popup blocked by browser, falling back to signInWithRedirect...');
                 try {
                     return await auth.signInWithRedirect(provider);
                 } catch (redErr) {
