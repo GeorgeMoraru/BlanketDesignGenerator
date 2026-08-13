@@ -2556,6 +2556,7 @@
         initFirebaseAuthSync();
         loadPatternFromUrlHash();
         initUXFeatures();
+        drawBlanketCanvas(false);
     };
 
     // =========================================================================
