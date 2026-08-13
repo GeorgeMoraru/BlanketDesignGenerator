@@ -959,6 +959,18 @@
                         ${styleOptions}
                     </select>
                 </div>
+                ${(() => {
+                    if (!state.blanketGrid || state.blanketGrid.length === 0) return '';
+                    let count = 0;
+                    for (const row of state.blanketGrid) {
+                        for (const cell of row) { if (cell === pattern.id) count++; }
+                    }
+                    if (count === 0) return '';
+                    const yardagePerCell = 2.5;
+                    const totalM = Math.ceil(count * yardagePerCell);
+                    const skeins = Math.ceil(totalM / 100);
+                    return `<div style="font-size:11px;color:var(--text-secondary);margin-top:4px;padding:4px 6px;background:rgba(255,255,255,0.04);border-radius:6px;">🧶 ${count} squares · ~${totalM}m · ${skeins} skein${skeins !== 1 ? 's' : ''}</div>`;
+                })()}
             `;
 
             // Attach event listeners to newly created select elements for instant preview updates
@@ -1567,6 +1579,9 @@
         
         localforage.setItem('blanket_local_history', state.history);
         renderHistoryList();
+        if (typeof showToast === 'function') {
+            showToast('✓ Design saved to history');
+        }
 
         if (state.currentUser && window.FirebaseAuthSync) {
             window.FirebaseAuthSync.saveDesignToCloud(state.currentUser.uid, entry);
@@ -2540,6 +2555,119 @@
         bindEvents();
         initFirebaseAuthSync();
         loadPatternFromUrlHash();
+        initUXFeatures();
+    };
+
+    // =========================================================================
+    // UX Features: Tooltips, Zoom, Toasts
+    // =========================================================================
+    const showToast = (message, duration = 2000) => {
+        const container = document.querySelector('#toast-container');
+        if (!container) return;
+        const toast = document.createElement('div');
+        toast.className = 'toast-item';
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.remove();
+        }, duration + 300);
+    };
+
+    const initUXFeatures = () => {
+        // 1. HOVER TOOLTIPS
+        const tooltip = document.querySelector('#canvas-tooltip');
+        const blanketContainer = document.querySelector('#blanket-container');
+
+        if (tooltip && blanketContainer) {
+            blanketContainer.addEventListener('mouseover', (e) => {
+                const cell = e.target.closest('td.cellSquare');
+                if (!cell) { tooltip.style.opacity = '0'; return; }
+
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                const bWidth = state.borderWidth || 0;
+
+                let patternInfo = '';
+                let colorInfo = '';
+
+                if (cell.classList.contains('border-cell') || cell.classList.contains('border-corner')) {
+                    patternInfo = 'Border round';
+                    const bc = state.borderLayers?.[0]?.colors?.[0] || '#888';
+                    colorInfo = `<span style="display:inline-block;width:10px;height:10px;background:${bc};border-radius:2px;margin-right:4px;vertical-align:middle;"></span>${getYarnShadeInfo(bc)}`;
+                } else {
+                    const inR = row - bWidth;
+                    const inC = col - bWidth;
+                    const patternId = state.blanketGrid?.[inR]?.[inC];
+                    const pattern = state.patterns?.find(p => p.id === patternId);
+                    if (pattern) {
+                        const styleDetails = getPatternStyleDetails(pattern.style);
+                        patternInfo = styleDetails.name;
+                        const c1 = pattern.colors?.[0] || '#888';
+                        colorInfo = `<span style="display:inline-block;width:10px;height:10px;background:${c1};border-radius:2px;margin-right:4px;vertical-align:middle;"></span>${getYarnShadeInfo(c1)}`;
+                    }
+                }
+
+                tooltip.innerHTML = `<strong>${patternInfo}</strong>${colorInfo}<br><span style="color:rgba(255,255,255,0.5);font-size:10px;">Row ${row + 1}, Col ${col + 1}</span>`;
+                tooltip.style.opacity = '1';
+            });
+
+            blanketContainer.addEventListener('mousemove', (e) => {
+                tooltip.style.left = (e.pageX + 14) + 'px';
+                tooltip.style.top = (e.pageY - 10) + 'px';
+            });
+
+            blanketContainer.addEventListener('mouseleave', () => {
+                tooltip.style.opacity = '0';
+            });
+        }
+
+        // 2. CANVAS ZOOM CONTROLS
+        let zoomLevel = 1;
+        const ZOOM_STEP = 0.15;
+        const ZOOM_MIN = 0.4;
+        const ZOOM_MAX = 3.0;
+
+        const applyZoom = () => {
+            const table = document.querySelector('#blanket-container table');
+            const zoomControls = document.querySelector('#zoom-controls');
+            if (table) {
+                table.style.transformOrigin = 'top center';
+                table.style.transform = `scale(${zoomLevel})`;
+                table.style.transition = 'transform 0.2s ease';
+            }
+            if (zoomControls) zoomControls.style.display = 'flex';
+        };
+
+        const zoomInBtn = document.querySelector('#zoom-in-btn');
+        const zoomOutBtn = document.querySelector('#zoom-out-btn');
+        const zoomResetBtn = document.querySelector('#zoom-reset-btn');
+
+        if (zoomInBtn) zoomInBtn.addEventListener('click', () => {
+            zoomLevel = Math.min(ZOOM_MAX, +(zoomLevel + ZOOM_STEP).toFixed(2));
+            applyZoom();
+        });
+        if (zoomOutBtn) zoomOutBtn.addEventListener('click', () => {
+            zoomLevel = Math.max(ZOOM_MIN, +(zoomLevel - ZOOM_STEP).toFixed(2));
+            applyZoom();
+        });
+        if (zoomResetBtn) zoomResetBtn.addEventListener('click', () => {
+            zoomLevel = 1;
+            applyZoom();
+        });
+
+        // Show zoom controls whenever a blanket grid table is created
+        const blanketObserver = new MutationObserver(() => {
+            const table = document.querySelector('#blanket-container table');
+            const zoomControls = document.querySelector('#zoom-controls');
+            if (table && zoomControls) {
+                zoomControls.style.display = 'flex';
+                table.style.transformOrigin = 'top center';
+                table.style.transform = `scale(${zoomLevel})`;
+            }
+        });
+        if (blanketContainer) {
+            blanketObserver.observe(blanketContainer, { childList: true, subtree: false });
+        }
     };
 
     if (document.readyState === 'loading') {
