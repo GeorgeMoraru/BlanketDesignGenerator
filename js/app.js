@@ -123,6 +123,21 @@
             className: 'granny-chevron',
             name: 'Chevron Ripple',
             minColors: 3
+        },
+        spiral: {
+            className: 'granny-spiral',
+            name: 'Spiral Pinwheel',
+            minColors: 4
+        },
+        cross: {
+            className: 'granny-cross',
+            name: 'Bavarian Cross',
+            minColors: 4
+        },
+        wave: {
+            className: 'granny-wave',
+            name: 'Ocean Wave',
+            minColors: 3
         }
     };
 
@@ -282,9 +297,11 @@
         if (rowsInput) state.rows = parseInt(rowsInput.value) || 8;
         if (colsInput) state.cols = parseInt(colsInput.value) || 8;
 
-        // Start with two default patterns
+        // Start with four rich, varied default patterns
         addPatternToState('classic');
         addPatternToState('flower');
+        addPatternToState('star');
+        addPatternToState('chevron');
     };
 
     // Redistribute pattern quantities to divide total cells as evenly as possible

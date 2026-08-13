@@ -765,6 +765,37 @@ table.blanket {
     background-size: 20px 20px;
 }
 
+/* Style 10: Spiral Pinwheel */
+.granny-spiral {
+    background: conic-gradient(
+        from 0deg,
+        var(--color-1) 0deg 60deg,
+        var(--color-2) 60deg 120deg,
+        var(--color-3) 120deg 180deg,
+        var(--color-4) 180deg 240deg,
+        var(--color-1) 240deg 300deg,
+        var(--color-2) 300deg 360deg
+    );
+}
+
+/* Style 11: Bavarian Cross */
+.granny-cross {
+    background: 
+        linear-gradient(to right, transparent 35%, var(--color-1) 35% 65%, transparent 65%),
+        linear-gradient(to bottom, transparent 35%, var(--color-1) 35% 65%, transparent 65%),
+        radial-gradient(circle, var(--color-2) 40%, transparent 41%),
+        var(--color-3);
+}
+
+/* Style 12: Ocean Wave */
+.granny-wave {
+    background: 
+        radial-gradient(circle at 100% 50%, transparent 20%, var(--color-1) 21% 34%, transparent 35%),
+        radial-gradient(circle at 0% 50%, transparent 20%, var(--color-2) 21% 34%, transparent 35%),
+        var(--color-3);
+    background-size: 20px 20px;
+}
+
 /* 60 FPS GPU Hardware Accelerated Animations & Easing */
 @keyframes slideIn {
     from {
