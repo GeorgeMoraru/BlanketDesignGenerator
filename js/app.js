@@ -374,117 +374,17 @@
         shell: 'Shell / Scallop Edging'
     };
 
-    const renderBorderLayersList = () => {
-        const container = document.querySelector('#border-layers-list');
-        if (!container) return;
-        container.innerHTML = '';
-
-        if (!state.borderLayers || state.borderLayers.length === 0) {
-            container.innerHTML = '<div style="font-size: 11px; color: var(--text-muted); text-align: center; padding: 6px 0;">No border layers. Click "+ Layer" to add.</div>';
-            state.borderWidth = 0;
-            updateDimensionsInfo();
-            return;
-        }
-
-        state.borderWidth = state.borderLayers.length;
-
-        state.borderLayers.forEach((layer, idx) => {
-            const item = document.createElement('div');
-            item.className = 'border-layer-item';
-
-            const num = document.createElement('span');
-            num.className = 'border-layer-num';
-            num.textContent = `R${idx + 1}`;
-
-            const select = document.createElement('select');
-            select.className = 'border-layer-stitch';
-            Object.keys(STITCH_TYPES).forEach(stKey => {
-                const opt = document.createElement('option');
-                opt.value = stKey;
-                opt.textContent = STITCH_TYPES[stKey];
-                if (layer.type === stKey) opt.selected = true;
-                select.appendChild(opt);
-            });
-            select.addEventListener('change', (e) => {
-                layer.type = e.target.value;
-                drawBlanketCanvas(true);
-            });
-
-            const removeBtn = document.createElement('button');
-            removeBtn.type = 'button';
-            removeBtn.className = 'btn-remove-layer';
-            removeBtn.innerHTML = '×';
-            removeBtn.title = 'Remove border layer';
-            removeBtn.addEventListener('click', () => {
-                removeBorderLayer(layer.id);
-            });
-
-            item.appendChild(num);
-            item.appendChild(select);
-            item.appendChild(removeBtn);
-
-            container.appendChild(item);
-        });
-
-        updateDimensionsInfo();
-    };
-
-    const addBorderLayer = (type = 'solid', color = null) => {
-        if (!state.borderLayers) state.borderLayers = [];
-        if (!color) {
-            const palIndex = state.paletteIndex !== undefined ? state.paletteIndex : 0;
-            const colors = COMMERCIAL_PALETTES[palIndex].colors;
-            color = colors[state.borderLayers.length % colors.length] || '#27212b';
-        }
-        const newLayer = {
-            id: `b-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-            type: type,
-            color: color
-        };
-        state.borderLayers.push(newLayer);
-        renderBorderLayersList();
-        drawBlanketCanvas(true);
-    };
-
-    const removeBorderLayer = (id) => {
-        state.borderLayers = state.borderLayers.filter(l => l.id !== id);
-        renderBorderLayersList();
-        drawBlanketCanvas(true);
-    };
-
-    const applyBorderPreset = (presetKey) => {
-        if (!state.borderLayers || state.borderLayers.length === 0) {
-            addBorderLayer('solid');
-            addBorderLayer('granny-cluster');
-        }
-        const patterns = state.patterns;
-        const allColors = patterns.flatMap(p => p.colors);
-        if (allColors.length === 0) return;
-
-        if (presetKey === 'echo') {
-            state.borderLayers.forEach((layer, i) => {
-                layer.color = allColors[i % allColors.length];
-            });
-        } else if (presetKey === 'contrast') {
-            state.borderLayers.forEach((layer, i) => {
-                const baseHex = allColors[i % allColors.length];
-                layer.color = getComplementaryHex(baseHex);
-            });
-        } else if (presetKey === 'ombre') {
-            const baseHex = allColors[0] || '#e07a5f';
-            const shades = generateOmbreShades(baseHex, state.borderLayers.length);
-            state.borderLayers.forEach((layer, i) => {
-                layer.color = shades[i];
-            });
-        } else if (presetKey === 'random') {
-            const randPal = COMMERCIAL_PALETTES[Math.floor(Math.random() * COMMERCIAL_PALETTES.length)];
-            state.borderLayers.forEach((layer, i) => {
-                layer.color = randPal.colors[i % randPal.colors.length];
-            });
-        }
-
-        renderBorderLayersList();
-        drawBlanketCanvas(true);
+    const updateBorderLayersFromState = () => {
+        const palIndex = state.paletteIndex !== undefined ? state.paletteIndex : 0;
+        const colors = COMMERCIAL_PALETTES[palIndex].colors;
+        const style = state.borderStyle || 'solid';
+        const width = state.borderWidth !== undefined ? state.borderWidth : 2;
+        
+        state.borderLayers = Array.from({ length: width }, (_, i) => ({
+            id: `b-${i}`,
+            type: style,
+            color: colors[i % colors.length] || '#27212b'
+        }));
     };
 
     const getComplementaryHex = (hex) => {
@@ -1481,20 +1381,14 @@
         
         state.rows = item.rows;
         state.cols = item.cols;
-        state.borderWidth = item.borderWidth ?? 1;
+        state.borderWidth = item.borderWidth ?? 2;
         state.borderColor = item.borderColor || '#27212b';
+        state.borderStyle = item.borderStyle || (item.borderLayers && item.borderLayers[0] ? item.borderLayers[0].type : 'solid');
         state.lockedCells = new Set(item.lockedCells || []);
         state.patterns = JSON.parse(JSON.stringify(item.patterns));
         state.blanketGrid = JSON.parse(JSON.stringify(item.grid));
         
-        if (item.borderLayers) {
-            state.borderLayers = JSON.parse(JSON.stringify(item.borderLayers));
-        } else {
-            state.borderLayers = [
-                { id: 'b-1', type: 'solid', color: state.borderColor },
-                { id: 'b-2', type: 'granny-cluster', color: '#e6ded2' }
-            ];
-        }
+        updateBorderLayersFromState();
 
         if (state.patterns && state.patterns.length > 0) {
             state.paletteIndex = state.patterns[0].paletteIndex || 0;
@@ -1504,6 +1398,11 @@
         const colsInput = document.querySelector('#columns');
         if (rowsInput) rowsInput.value = state.rows;
         if (colsInput) colsInput.value = state.cols;
+
+        const borderPatternSelect = document.querySelector('#border-pattern-select');
+        const borderWidthSelect = document.querySelector('#border-width-select');
+        if (borderPatternSelect) borderPatternSelect.value = state.borderStyle;
+        if (borderWidthSelect) borderWidthSelect.value = state.borderWidth;
         
         let maxPatternId = 0;
         state.patterns.forEach(p => {
@@ -1512,7 +1411,6 @@
         state.nextPatternId = maxPatternId;
         
         populateGlobalPaletteDropdown();
-        renderBorderLayersList();
         renderPatternsList();
         updateDimensionsInfo();
         drawBlanketCanvas(true);
@@ -2097,15 +1995,28 @@
                 });
                 
                 // Update border layers colors
-                if (state.borderLayers) {
-                    state.borderLayers.forEach((layer, i) => {
-                        layer.color = colors[i % colors.length];
-                    });
-                }
+                updateBorderLayersFromState();
                 
                 // Rerender lists & draw
                 renderPatternsList();
-                renderBorderLayersList();
+                drawBlanketCanvas(true);
+            });
+        }
+
+        const borderPatternSelect = document.querySelector('#border-pattern-select');
+        if (borderPatternSelect) {
+            borderPatternSelect.addEventListener('change', (e) => {
+                state.borderStyle = e.target.value;
+                updateBorderLayersFromState();
+                drawBlanketCanvas(true);
+            });
+        }
+
+        const borderWidthSelect = document.querySelector('#border-width-select');
+        if (borderWidthSelect) {
+            borderWidthSelect.addEventListener('change', (e) => {
+                state.borderWidth = parseInt(e.target.value) || 0;
+                updateBorderLayersFromState();
                 drawBlanketCanvas(true);
             });
         }
@@ -2381,8 +2292,21 @@
                         state.paletteIndex = state.patterns[0].paletteIndex || 0;
                     }
 
+                    if (state.borderLayers && state.borderLayers.length > 0) {
+                        state.borderWidth = state.borderLayers.length;
+                        state.borderStyle = state.borderLayers[0].type || 'solid';
+                    } else {
+                        state.borderWidth = 2;
+                        state.borderStyle = 'solid';
+                    }
+
+                    const borderPatternSelect = document.querySelector('#border-pattern-select');
+                    const borderWidthSelect = document.querySelector('#border-width-select');
+                    if (borderPatternSelect) borderPatternSelect.value = state.borderStyle;
+                    if (borderWidthSelect) borderWidthSelect.value = state.borderWidth;
+
+                    updateBorderLayersFromState();
                     populateGlobalPaletteDropdown();
-                    renderBorderLayersList();
                     renderPatternsList();
                     drawBlanketCanvas(true);
                     console.log('Loaded shared pattern from URL hash!');
@@ -2500,7 +2424,7 @@
         initTheme();
         initDefaultState();
         populateGlobalPaletteDropdown();
-        renderBorderLayersList();
+        updateBorderLayersFromState();
         renderPatternsList();
         updateDimensionsInfo();
         initHistory();

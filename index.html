@@ -142,7 +142,7 @@
             <!-- Unified Patterns & Borders Card -->
             <div id="patterns-and-borders-card" class="panel-card">
                 <div class="card-header-row">
-                    <h2 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Patterns & Borders</h2>
+                    <h2 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-primary);">Patterns</h2>
                 </div>
 
                 <!-- Single Global Color Customization Dropdown -->
@@ -153,32 +153,32 @@
                     </select>
                 </div>
 
-                <!-- Border Sub-section -->
-                <div class="border-designer-section" style="border-top: 1px solid var(--border-glass); padding-top: 12px; margin-top: 8px;">
-                    <div class="border-section-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <label style="font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Border Layers</label>
-                        <button id="add-border-layer-btn" class="btn btn-sm btn-secondary" type="button" title="Add concentric border round">+ Layer</button>
-                    </div>
-
-                    <div id="border-layers-list" class="border-layers-list">
-                        <!-- Rendered dynamically by app.js -->
-                    </div>
-
-                    <div class="setting-group" style="margin-top: 10px;">
-                        <label for="border-generator-preset" style="font-size: 11px; color: var(--text-muted);">Auto-Color Preset</label>
-                        <div class="preset-input-row" style="display: flex; gap: 8px; margin-top: 4px;">
-                            <select id="border-generator-preset" style="flex: 1;">
-                                <option value="echo" selected>Echo Inner Palette</option>
-                                <option value="contrast">Harmonious Contrast</option>
-                                <option value="ombre">Ombre Light-to-Dark</option>
-                                <option value="random">Randomized Stripes</option>
-                            </select>
-                            <button id="apply-border-preset-btn" class="btn btn-sm btn-secondary" type="button" title="Apply procedural color sequence">Apply</button>
-                        </div>
-                    </div>
+                <!-- Border Pattern Selectors -->
+                <div class="setting-group" style="margin-bottom: 14px;">
+                    <label for="border-pattern-select">Border Pattern</label>
+                    <select id="border-pattern-select">
+                        <option value="solid" selected>Solid DC/HDC Band</option>
+                        <option value="granny-cluster">Granny Cluster (3-DC)</option>
+                        <option value="moss">Moss Stitch (Woven)</option>
+                        <option value="ribbed">Ribbed Cable</option>
+                        <option value="shell">Shell / Scallop Edging</option>
+                    </select>
                 </div>
 
-                <!-- Motif Patterns Sub-section -->
+                <div class="setting-group" style="margin-bottom: 14px;">
+                    <label for="border-width-select">Border Width (Rounds)</label>
+                    <select id="border-width-select">
+                        <option value="0">0 (No Border)</option>
+                        <option value="1">1 Round</option>
+                        <option value="2" selected>2 Rounds</option>
+                        <option value="3">3 Rounds</option>
+                        <option value="4">4 Rounds</option>
+                        <option value="5">5 Rounds</option>
+                        <option value="6">6 Rounds</option>
+                    </select>
+                </div>
+
+                <!-- Motif Patterns Section -->
                 <div class="motif-patterns-section" style="border-top: 1px solid var(--border-glass); padding-top: 12px; margin-top: 14px;">
                     <div class="patterns-title-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <label style="font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Motif Patterns</label>
