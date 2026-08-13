@@ -108,6 +108,21 @@
             className: 'granny-checker',
             name: 'Checkerboard',
             minColors: 4
+        },
+        star: {
+            className: 'granny-star',
+            name: 'Sunburst Star',
+            minColors: 4
+        },
+        stripes: {
+            className: 'granny-stripes',
+            name: 'Striped Block',
+            minColors: 4
+        },
+        chevron: {
+            className: 'granny-chevron',
+            name: 'Chevron Ripple',
+            minColors: 3
         }
     };
 
@@ -148,6 +163,36 @@
             brand: "Hobbii", 
             colors: ["#899b82", "#5c7352", "#3a4a33", "#dde5d9"],
             shades: ["Dusty Green (074)", "Forest Sage (075)", "Deep Pine (077)", "Natural Ivory (002)"]
+        },
+        {
+            name: "Stylecraft Special DK - Sunset Breeze",
+            brand: "Stylecraft",
+            colors: ["#ff9e79", "#f67280", "#c06c84", "#6c5b7b"],
+            shades: ["Apricot (1026)", "Shrimp (1132)", "Pomegranate (1124)", "Plum (1061)"]
+        },
+        {
+            name: "Paintbox Yarns - Lavender Mist",
+            brand: "Paintbox Yarns",
+            colors: ["#e1bee7", "#b39ddb", "#7e57c2", "#ede7f6"],
+            shades: ["Lilac (145)", "Heather (146)", "Pansy (147)", "Fresh Linen (102)"]
+        },
+        {
+            name: "Red Heart - Rainbow Burst",
+            brand: "Red Heart",
+            colors: ["#ff5252", "#ffeb3b", "#4caf50", "#2196f3"],
+            shades: ["Hot Red (0311)", "Bright Yellow (0320)", "Kelly Green (0360)", "Super Blue (0380)"]
+        },
+        {
+            name: "Hobbii - Mermaid Cove",
+            brand: "Hobbii",
+            colors: ["#80deea", "#26c6da", "#00acc1", "#006064"],
+            shades: ["Mint (082)", "Turquoise (085)", "Teal (087)", "Ocean (089)"]
+        },
+        {
+            name: "Scheepjes - Earth & Sky",
+            brand: "Scheepjes",
+            colors: ["#8d6e63", "#d7ccc8", "#90caf9", "#1565c0"],
+            shades: ["Chestnut (2602)", "Clay (2605)", "Sky Blue (2610)", "Royal Indigo (2615)"]
         }
     ];
 
