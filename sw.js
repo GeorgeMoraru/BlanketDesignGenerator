@@ -1,4 +1,4 @@
-const CACHE_NAME = 'blanket-generator-v42';
+const CACHE_NAME = 'blanket-generator-v2026-08-14-v2';
 const ASSETS = [
   './',
   'index.html',
@@ -10,7 +10,7 @@ const ASSETS = [
   'icons/icon.svg'
 ];
 
-// Install Event - cache assets
+// Install Event - cache assets and skip waiting immediately
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -20,7 +20,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate Event - clean old caches
+// Activate Event - purge all older caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -36,7 +36,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch Event - Network-First for HTML documents, Cache-First for static assets
+// Fetch Event - Network-First for ALL local app assets to ensure newest updates always load
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
@@ -52,43 +52,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const isHTMLRequest = event.request.mode === 'navigate' || 
-                        url.pathname.endsWith('.html') || 
-                        url.pathname === '/' || 
-                        url.pathname.endsWith('/');
-
-  if (isHTMLRequest) {
-    // Network-First for HTML navigation to guarantee newest scripts & index.html
-    event.respondWith(
-      fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return networkResponse;
-      }).catch(() => {
-        return caches.match(event.request);
-      })
-    );
-  } else {
-    // Cache-First for static assets (js, css, images) with network fallback
-    event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseClone);
-            });
-          }
-          return networkResponse;
+  // Network-First with Cache Fallback for instant fresh updates
+  event.respondWith(
+    fetch(event.request).then((networkResponse) => {
+      if (networkResponse && networkResponse.status === 200) {
+        const responseClone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseClone);
         });
-      })
-    );
-  }
+      }
+      return networkResponse;
+    }).catch(() => {
+      return caches.match(event.request);
+    })
+  );
 });
