@@ -2155,7 +2155,11 @@
         const sidebarToggleBtn = document.querySelector('#sidebar-toggle-btn');
         const sidebarCloseBtn = document.querySelector('#sidebar-close-btn');
         if (sidebarToggleBtn) {
-            sidebarToggleBtn.addEventListener('click', () => toggleSidebar(true));
+            sidebarToggleBtn.addEventListener('click', () => {
+                const sidebar = document.querySelector('.design-sidebar');
+                const isOpen = sidebar && sidebar.classList.contains('open');
+                toggleSidebar(!isOpen);
+            });
         }
         if (sidebarCloseBtn) {
             sidebarCloseBtn.addEventListener('click', () => toggleSidebar(false));

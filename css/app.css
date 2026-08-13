@@ -211,20 +211,25 @@ body {
     .design-sidebar {
         position: fixed;
         top: 56px;
-        left: -320px;
-        width: 320px;
-        min-width: 320px;
+        left: 0;
+        width: min(340px, 85vw);
+        min-width: 0;
+        max-width: 85vw;
         height: calc(100vh - 56px);
         height: calc(100dvh - 56px);
-        z-index: 150;
+        z-index: 500;
+        transform: translateX(-100%) !important;
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         border-right: 1px solid var(--border-glass);
         border-bottom: none;
         box-shadow: none;
-        padding: 16px 16px 24px 16px;
+        padding: 16px 16px 80px 16px;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        overflow-y: auto;
     }
     .design-sidebar.open {
-        transform: translateX(320px);
+        transform: translateX(0) !important;
         box-shadow: 10px 0 40px rgba(0, 0, 0, 0.8);
     }
     #sidebar-toggle-btn {
