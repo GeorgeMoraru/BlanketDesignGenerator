@@ -612,15 +612,6 @@ select:focus {
 table.blanket {
     border-collapse: separate;
     border-spacing: var(--cell-spacing, 3px);
-    background: var(--table-bg);
-    padding: 16px;
-    border-radius: 20px;
-    box-shadow: 
-        0 20px 50px rgba(0, 0, 0, 0.8),
-        0 0 0 1px rgba(255, 255, 255, 0.05);
-    max-width: 100%;
-    max-height: 100%;
-    box-sizing: border-box;
     margin: auto;
 }
 
