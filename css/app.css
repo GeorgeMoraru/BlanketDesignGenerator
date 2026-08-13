@@ -1422,8 +1422,12 @@ body {
     padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Non-Square Motif Geometries */
 /* Hexagon Honeycomb */
+table.blanket.grid-hexagon {
+    padding-left: calc(var(--cell-size) * 0.3 + 12px) !important;
+    padding-right: calc(var(--cell-size) * 0.3 + 12px) !important;
+}
+
 table.blanket.grid-hexagon td.cellSquare {
     clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
     border-radius: 0 !important;
@@ -1431,7 +1435,11 @@ table.blanket.grid-hexagon td.cellSquare {
 }
 
 table.blanket.grid-hexagon tr:nth-child(odd) {
-    transform: translateX(25px);
+    transform: translateX(calc((var(--cell-size) + var(--cell-spacing, 6px)) * 0.25));
+}
+
+table.blanket.grid-hexagon tr:nth-child(even) {
+    transform: translateX(calc((var(--cell-size) + var(--cell-spacing, 6px)) * -0.25));
 }
 
 /* Isometric Triangles */

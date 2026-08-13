@@ -1060,7 +1060,10 @@
         const availH = isMobile ? Math.min(window.innerHeight - 180, (canvas.clientHeight || window.innerHeight) - 180) : (canvas.clientHeight || 700);
         
         const spacing = isMobile ? 3 : 6;
-        const padding = isMobile ? 12 : 24;
+        let padding = isMobile ? 12 : 24;
+        if (state.geometry === 'hexagon') {
+            padding += isMobile ? 24 : 48;
+        }
         const cellW = Math.floor((availW - padding - (totalCols * spacing)) / totalCols);
         const cellH = Math.floor((availH - padding - (totalRows * spacing)) / totalRows);
         const calculatedCellSize = Math.max(14, Math.min(72, Math.min(cellW, cellH)));
