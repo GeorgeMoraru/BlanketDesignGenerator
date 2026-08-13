@@ -611,7 +611,7 @@ select:focus {
 /* Table grid styling for blanket layout */
 table.blanket {
     border-collapse: separate;
-    border-spacing: var(--cell-spacing, 3px);
+    border-spacing: var(--cell-spacing, 0px);
     margin: auto;
 }
 
@@ -1418,11 +1418,11 @@ table.blanket.grid-hexagon td.cellSquare {
 }
 
 table.blanket.grid-hexagon tr:nth-child(odd) {
-    transform: translateX(calc((var(--cell-size) + var(--cell-spacing, 3px)) * 0.25));
+    transform: translateX(calc((var(--cell-size) + var(--cell-spacing, 0px)) * 0.25));
 }
 
 table.blanket.grid-hexagon tr:nth-child(even) {
-    transform: translateX(calc((var(--cell-size) + var(--cell-spacing, 3px)) * -0.25));
+    transform: translateX(calc((var(--cell-size) + var(--cell-spacing, 0px)) * -0.25));
 }
 
 /* Isometric Triangles */
@@ -1439,7 +1439,7 @@ table.blanket.grid-triangle td.cellSquare.tri-down {
 /* Stripe Rows (Continuous) Geometry */
 table.blanket.grid-stripe {
     border-collapse: separate;
-    border-spacing: 0 var(--cell-spacing, 3px) !important;
+    border-spacing: 0 var(--cell-spacing, 0px) !important;
 }
 
 table.blanket.grid-stripe td.cellSquare:not(.border-cell) {
