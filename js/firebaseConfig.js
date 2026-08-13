@@ -41,18 +41,12 @@
                     console.warn('[Firebase Auth] Persistence error:', err);
                 });
 
-                // Process redirect result if returning from signInWithRedirect
                 auth.getRedirectResult().then(result => {
                     if (result && result.user) {
                         console.log('[Firebase Auth] Signed in via redirect:', result.user.displayName);
                     }
                 }).catch(err => {
-                    console.error('[Firebase Auth] Redirect result error:', err.code, err.message);
-                    if (err.code === 'auth/unauthorized-domain') {
-                        alert(`Firebase Auth Error (unauthorized-domain):\nThe domain "${window.location.hostname}" is not authorized in your Firebase Console.\n\nPlease add "${window.location.hostname}" under Firebase Console -> Authentication -> Settings -> Authorized Domains.`);
-                    } else if (err.code && err.code !== 'auth/popup-closed-by-user') {
-                        alert(`Firebase Auth Error (${err.code}):\n${err.message}`);
-                    }
+                    console.warn('[Firebase Auth] Passive redirect check note:', err.code, err.message);
                 });
                 console.log('[Firebase] Initialized successfully with project:', firebaseConfig.projectId);
                 return true;
