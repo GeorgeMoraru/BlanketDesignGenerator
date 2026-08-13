@@ -9,3 +9,5 @@ android/local.properties
 .idea/
 .DS_Store
 *.log
+js/firebaseConfig.local.js
+

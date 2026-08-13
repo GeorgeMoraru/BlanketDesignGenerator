@@ -29,6 +29,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebaseConfig.local.js"></script>
     <script src="js/firebaseConfig.js"></script>
     
     <script src="js/nativeBridge.js" defer></script>
@@ -347,6 +348,12 @@
                 </div>
             </div>
 
+            <!-- Floating Canvas Zoom Controls -->
+            <div id="zoom-controls" class="zoom-controls" style="display: none;">
+                <button id="zoom-in-btn" class="zoom-btn" title="Zoom In" aria-label="Zoom In">+</button>
+                <button id="zoom-out-btn" class="zoom-btn" title="Zoom Out" aria-label="Zoom Out">-</button>
+                <button id="zoom-reset-btn" class="zoom-btn" title="Reset Zoom" aria-label="Reset Zoom">⟲</button>
+            </div>
 
             <!-- Floating action button to download canvas as image -->
             <div class="fab-group">
@@ -359,6 +366,12 @@
             </div>
         </section>
     </main>
+
+    <!-- Interactive Tooltip -->
+    <div id="canvas-tooltip" class="canvas-tooltip"></div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
 
     <!-- Overlay menu backdrop -->
     <div id="menu-overlay" class="menu-overlay"></div>

@@ -1687,3 +1687,104 @@ table.blanket.grid-stripe td.cellSquare:not(.border-cell) {
         border-radius: 0 !important;
     }
 }
+
+/* Floating Zoom controls in canvas */
+.zoom-controls {
+    position: absolute;
+    bottom: 24px;
+    left: 24px;
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+}
+
+.zoom-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid var(--border-glass);
+    background: var(--bg-card-glass);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: var(--text-primary);
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.zoom-btn:hover {
+    background: var(--bg-card-glass-active);
+    border-color: var(--border-glass-active);
+    transform: scale(1.05);
+}
+
+/* Canvas hover tooltips */
+.canvas-tooltip {
+    position: absolute;
+    pointer-events: none;
+    z-index: 2000;
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #fff;
+    font-size: 11px;
+    line-height: 1.4;
+    max-width: 220px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transition: opacity 0.15s ease-out;
+}
+
+.canvas-tooltip strong {
+    display: block;
+    font-size: 12px;
+    color: var(--accent);
+    margin-bottom: 2px;
+}
+
+/* Toast Notifications */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 9999;
+    pointer-events: none;
+}
+
+.toast-item {
+    background: rgba(91, 192, 190, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    color: #0c1821;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(91, 192, 190, 0.35);
+    animation: toastSlideUp 0.3s ease forwards, toastFadeOut 0.3s ease 1.7s forwards;
+    pointer-events: auto;
+    text-align: center;
+}
+
+@keyframes toastSlideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes toastFadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}

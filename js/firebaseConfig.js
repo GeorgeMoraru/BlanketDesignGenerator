@@ -10,11 +10,15 @@
         authDomain: "__FIREBASE_AUTH_DOMAIN__",
         projectId: "__FIREBASE_PROJECT_ID__",
         storageBucket: "__FIREBASE_STORAGE_BUCKET__",
-        messagingSenderId: "123456789012",
-        appId: "1:123456789012:web:a1b2c3d4e5f6"
+        messagingSenderId: "__FIREBASE_MESSAGING_SENDER_ID__",
+        appId: "__FIREBASE_APP_ID__"
     };
 
     const firebaseConfig = window.FIREBASE_CONFIG || defaultConfig;
+
+    if (firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith('__')) {
+        console.warn('[Firebase] Config placeholders detected. To enable cloud sync locally, copy js/firebaseConfig.local.example.js to js/firebaseConfig.local.js and fill in your credentials.');
+    }
 
     let app = null;
     let auth = null;
