@@ -2459,6 +2459,13 @@
         if (loginBtn) loginBtn.addEventListener('click', handleGoogleLogin);
         if (gatewayLoginBtn) gatewayLoginBtn.addEventListener('click', handleGoogleLogin);
 
+        const gatewayGuestBtn = document.querySelector('#gateway-guest-btn');
+        if (gatewayGuestBtn && gatewayScreen) {
+            gatewayGuestBtn.addEventListener('click', () => {
+                gatewayScreen.classList.add('hidden');
+            });
+        }
+
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async () => {
                 try {
