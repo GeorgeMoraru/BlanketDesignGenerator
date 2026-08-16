@@ -4,9 +4,9 @@
 (function() {
     'use strict';
 
-    // Default Firebase Web Config (Managed dynamically by ProjectsProxi)
-    const defaultConfig = {
-        apiKey: "__PROJECTSPROXI_MANAGED__",
+    // Fallback Built-in Configuration for blanketdesign-6f376
+    const BUILTIN_CONFIG = {
+        apiKey: "AIzaSy_PROJECTSPROXI_MANAGED_KEY",
         authDomain: "blanketdesign-6f376.firebaseapp.com",
         projectId: "blanketdesign-6f376",
         storageBucket: "blanketdesign-6f376.firebasestorage.app",
@@ -15,15 +15,39 @@
         measurementId: "G-3BQN0NXE6K"
     };
 
-    const firebaseConfig = window.FIREBASE_CONFIG || defaultConfig;
+    // Helper to get active configuration dynamically
+    const getActiveConfig = () => {
+        if (window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.apiKey && !window.FIREBASE_CONFIG.apiKey.startsWith('__')) {
+            return window.FIREBASE_CONFIG;
+        }
+        try {
+            const cached = localStorage.getItem('blanket_firebase_config');
+            if (cached) {
+                const parsed = JSON.parse(cached);
+                if (parsed && parsed.apiKey && !parsed.apiKey.startsWith('__')) {
+                    return parsed;
+                }
+            }
+        } catch (e) {}
+        return BUILTIN_CONFIG;
+    };
 
-    // Optional dynamic sync from ProjectsProxi server
+    // Dynamic sync from ProjectsProxi server
     if (typeof fetch !== 'undefined') {
-        const proxyEndpoints = ['/api/config/blanket', 'http://127.0.0.1:8765/api/config/blanket'];
+        const proxyEndpoints = [
+            '/api/config/blanket',
+            'http://127.0.0.1:8765/api/config/blanket',
+            'https://themeanmachine.taild1868e.ts.net:10006/api/config/blanket',
+            '/foodex/api/config/blanket'
+        ];
         for (const ep of proxyEndpoints) {
             fetch(ep).then(r => r.ok ? r.json() : null).then(remoteConfig => {
                 if (remoteConfig && remoteConfig.apiKey && !remoteConfig.apiKey.startsWith('__')) {
                     window.FIREBASE_CONFIG = remoteConfig;
+                    try { localStorage.setItem('blanket_firebase_config', JSON.stringify(remoteConfig)); } catch (e) {}
+                    if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+                        // Already initialized with valid config
+                    }
                 }
             }).catch(() => {});
         }
@@ -37,8 +61,9 @@
         if (auth && db) return true;
         if (typeof firebase !== 'undefined') {
             try {
+                const config = getActiveConfig();
                 if (!firebase.apps.length) {
-                    app = firebase.initializeApp(firebaseConfig);
+                    app = firebase.initializeApp(config);
                 } else {
                     app = firebase.app();
                 }
@@ -57,7 +82,7 @@
                 }).catch(err => {
                     console.warn('[Firebase Auth] Passive redirect check note:', err.code, err.message);
                 });
-                console.log('[Firebase] Initialized successfully with project:', firebaseConfig.projectId);
+                console.log('[Firebase] Initialized successfully with project:', config.projectId);
                 return true;
             } catch (e) {
                 console.error('[Firebase Init Error]:', e);
@@ -71,8 +96,9 @@
 
     // Google Sign-In helper with explicit error diagnostics & fallback
     const loginWithGoogle = async () => {
-        if (firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith('__')) {
-            alert('Firebase credentials placeholder detected.\n\nTo enable Google Sign-In locally, create js/firebaseConfig.local.js with your Firebase credentials, or deploy to GitHub Pages with repository secrets configured.');
+        const config = getActiveConfig();
+        if (config.apiKey && config.apiKey.startsWith('__')) {
+            alert('Firebase credentials placeholder detected.\n\nTo enable Google Sign-In locally, ensure ProjectsProxi is running or set up js/firebaseConfig.local.js.');
             return;
         }
 
