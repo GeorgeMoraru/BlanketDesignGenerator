@@ -1215,6 +1215,10 @@
 
                     if ((isTop || isBottom) && (isLeft || isRight)) {
                         cell.classList.add('border-corner');
+                    } else if (isTop || isBottom) {
+                        cell.classList.add('border-edge-h');
+                    } else {
+                        cell.classList.add('border-edge-v');
                     }
                 } else {
                     const inR = r - bWidth;
@@ -1621,6 +1625,174 @@
         ctx.closePath();
     };
 
+    const drawCanvasMotif = (ctx, x, y, size, style, colors) => {
+        const c1 = colors[0] || '#e6ded2';
+        const c2 = colors[1] || '#b49b9c';
+        const c3 = colors[2] || '#886e70';
+        const c4 = colors[3] || '#d8c1c5';
+        const cx = x + size / 2;
+        const cy = y + size / 2;
+
+        if (style === 'solid') {
+            ctx.fillStyle = c1;
+            ctx.fillRect(x, y, size, size);
+        } else if (style === 'classic') {
+            ctx.fillStyle = c4;
+            ctx.fillRect(x, y, size, size);
+            
+            ctx.fillStyle = c3;
+            const w3 = size * 0.76;
+            ctx.fillRect(cx - w3/2, cy - w3/2, w3, w3);
+            
+            ctx.fillStyle = c2;
+            const w2 = size * 0.52;
+            ctx.fillRect(cx - w2/2, cy - w2/2, w2, w2);
+            
+            ctx.fillStyle = c1;
+            const w1 = size * 0.28;
+            ctx.fillRect(cx - w1/2, cy - w1/2, w1, w1);
+        } else if (style === 'flower') {
+            ctx.fillStyle = c4;
+            ctx.fillRect(x, y, size, size);
+            
+            ctx.fillStyle = c3;
+            ctx.beginPath();
+            ctx.arc(cx, cy, size * 0.36, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = c2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, size * 0.23, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = c1;
+            ctx.beginPath();
+            ctx.arc(cx, cy, size * 0.10, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (style === 'mitered') {
+            ctx.fillStyle = c4;
+            ctx.fillRect(x, y, size, size);
+            
+            ctx.fillStyle = c3;
+            ctx.fillRect(x, y, size * 0.78, size * 0.78);
+            
+            ctx.fillStyle = c2;
+            ctx.fillRect(x, y, size * 0.54, size * 0.54);
+            
+            ctx.fillStyle = c1;
+            ctx.fillRect(x, y, size * 0.30, size * 0.30);
+        } else if (style === 'diamond') {
+            ctx.fillStyle = c1;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy); ctx.lineTo(x, y); ctx.lineTo(x + size, y); ctx.closePath();
+            ctx.fill();
+            
+            ctx.fillStyle = c2;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy); ctx.lineTo(x + size, y); ctx.lineTo(x + size, y + size); ctx.closePath();
+            ctx.fill();
+            
+            ctx.fillStyle = c3;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy); ctx.lineTo(x + size, y + size); ctx.lineTo(x, y + size); ctx.closePath();
+            ctx.fill();
+            
+            ctx.fillStyle = c4;
+            ctx.beginPath();
+            ctx.moveTo(cx, cy); ctx.lineTo(x, y + size); ctx.lineTo(x, y); ctx.closePath();
+            ctx.fill();
+        } else if (style === 'target') {
+            ctx.fillStyle = c4;
+            ctx.fillRect(x, y, size, size);
+            
+            ctx.fillStyle = c3;
+            ctx.beginPath(); ctx.arc(cx, cy, size * 0.32, 0, Math.PI * 2); ctx.fill();
+            
+            ctx.fillStyle = c2;
+            ctx.beginPath(); ctx.arc(cx, cy, size * 0.20, 0, Math.PI * 2); ctx.fill();
+            
+            ctx.fillStyle = c1;
+            ctx.beginPath(); ctx.arc(cx, cy, size * 0.09, 0, Math.PI * 2); ctx.fill();
+        } else if (style === 'checker') {
+            const h = size / 2;
+            ctx.fillStyle = c1; ctx.fillRect(x, y, h, h);
+            ctx.fillStyle = c2; ctx.fillRect(x + h, y, h, h);
+            ctx.fillStyle = c4; ctx.fillRect(x, y + h, h, h);
+            ctx.fillStyle = c3; ctx.fillRect(x + h, y + h, h, h);
+        } else if (style === 'star') {
+            ctx.fillStyle = c4;
+            ctx.fillRect(x, y, size, size);
+            
+            const numPoints = 8;
+            for (let i = 0; i < numPoints; i++) {
+                ctx.fillStyle = (i % 2 === 0) ? c2 : c3;
+                const a1 = (i * Math.PI * 2) / numPoints;
+                const a2 = ((i + 1) * Math.PI * 2) / numPoints;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, size * 0.46, a1, a2);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            ctx.fillStyle = c1;
+            ctx.beginPath(); ctx.arc(cx, cy, size * 0.14, 0, Math.PI * 2); ctx.fill();
+        } else if (style === 'stripes') {
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(Math.PI / 4);
+            const stripeW = (size * 1.5) / 4;
+            const startX = -(size * 1.5) / 2;
+            const cols = [c1, c2, c3, c4];
+            for (let i = 0; i < 4; i++) {
+                ctx.fillStyle = cols[i];
+                ctx.fillRect(startX + i * stripeW, -(size * 1.5)/2, stripeW, size * 1.5);
+            }
+            ctx.restore();
+        } else if (style === 'spiral') {
+            const numSectors = 6;
+            const cols = [c1, c2, c3, c4, c1, c2];
+            for (let i = 0; i < numSectors; i++) {
+                ctx.fillStyle = cols[i];
+                const a1 = (i * Math.PI * 2) / numSectors;
+                const a2 = ((i + 1) * Math.PI * 2) / numSectors;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, size * 0.65, a1, a2);
+                ctx.closePath();
+                ctx.fill();
+            }
+        } else if (style === 'cross') {
+            ctx.fillStyle = c4;
+            ctx.fillRect(x, y, size, size);
+            
+            ctx.fillStyle = c3;
+            ctx.beginPath(); ctx.arc(cx, cy, size * 0.38, 0, Math.PI * 2); ctx.fill();
+            
+            ctx.fillStyle = c2;
+            const arm = size * 0.24;
+            ctx.fillRect(cx - arm/2, y, arm, size);
+            ctx.fillRect(x, cy - arm/2, size, arm);
+            
+            ctx.fillStyle = c1;
+            ctx.beginPath(); ctx.arc(cx, cy, size * 0.12, 0, Math.PI * 2); ctx.fill();
+        } else if (style === 'wave') {
+            ctx.fillStyle = c3;
+            ctx.fillRect(x, y, size, size / 2);
+            ctx.fillStyle = c4;
+            ctx.fillRect(x, y + size / 2, size, size / 2);
+            
+            ctx.fillStyle = c1;
+            ctx.beginPath(); ctx.arc(x + size, cy, size * 0.30, 0, Math.PI * 2); ctx.fill();
+            
+            ctx.fillStyle = c2;
+            ctx.beginPath(); ctx.arc(x, cy, size * 0.30, 0, Math.PI * 2); ctx.fill();
+        } else {
+            ctx.fillStyle = c1;
+            ctx.fillRect(x, y, size, size);
+        }
+    };
+
     const drawStitchOverlay = (ctx, x, y, size) => {
         const step = 8;
         ctx.save();
@@ -1922,11 +2094,21 @@
         const totalCols = innerCols + bWidth * 2;
         
         const cellSize = 100;
+        const bThick = cellSize * 0.35;
         const spacing = 8;
         const padding = 24;
-        
-        const width = totalCols * cellSize + (totalCols - 1) * spacing + padding * 2;
-        const height = totalRows * cellSize + (totalRows - 1) * spacing + padding * 2;
+
+        const colWidths = [];
+        for (let c = 0; c < totalCols; c++) {
+            colWidths.push((c < bWidth || c >= totalCols - bWidth) ? bThick : cellSize);
+        }
+        const rowHeights = [];
+        for (let r = 0; r < totalRows; r++) {
+            rowHeights.push((r < bWidth || r >= totalRows - bWidth) ? bThick : cellSize);
+        }
+
+        const width = colWidths.reduce((a, b) => a + b, 0) + (totalCols - 1) * spacing + padding * 2;
+        const height = rowHeights.reduce((a, b) => a + b, 0) + (totalRows - 1) * spacing + padding * 2;
         
         const canvas = document.createElement('canvas');
         canvas.width = width;
@@ -1940,15 +2122,16 @@
         ctx.lineWidth = 2;
         ctx.strokeRect(1, 1, width - 2, height - 2);
         
+        let curY = padding;
         for (let r = 0; r < totalRows; r++) {
+            const curH = rowHeights[r];
+            let curX = padding;
             for (let c = 0; c < totalCols; c++) {
-                const x = padding + c * (cellSize + spacing);
-                const y = padding + r * (cellSize + spacing);
-                
+                const curW = colWidths[c];
                 const isBorder = r < bWidth || r >= totalRows - bWidth || c < bWidth || c >= totalCols - bWidth;
                 
                 ctx.save();
-                drawRoundedRect(ctx, x, y, cellSize, cellSize, 12);
+                drawRoundedRect(ctx, curX, curY, curW, curH, isBorder ? 2 : 12);
                 ctx.clip();
                 
                 if (isBorder) {
@@ -1956,7 +2139,7 @@
                     const layer = state.borderLayers && state.borderLayers[distFromEdge] ? state.borderLayers[distFromEdge] : null;
                     const layerColor = layer ? layer.color : bColor;
                     ctx.fillStyle = layerColor;
-                    ctx.fillRect(x, y, cellSize, cellSize);
+                    ctx.fillRect(curX, curY, curW, curH);
                 } else {
                     const inR = r - bWidth;
                     const inC = c - bWidth;
@@ -1964,133 +2147,19 @@
                     const pattern = state.patterns.find(p => p.id === patternId);
                 
                     if (pattern) {
-                        const style = pattern.style;
-                        const c1 = pattern.colors[0];
-                        const c2 = pattern.colors[1];
-                        const c3 = pattern.colors[2];
-                        const c4 = pattern.colors[3];
-                        
-                        if (style === 'solid') {
-                            ctx.fillStyle = c1;
-                            ctx.fillRect(x, y, cellSize, cellSize);
-                        } else if (style === 'classic') {
-                            ctx.fillStyle = c1;
-                            ctx.fillRect(x, y, cellSize, cellSize);
-                            
-                            ctx.fillStyle = c4;
-                            const o1 = cellSize * 0.12;
-                            ctx.fillRect(x + o1, y + o1, cellSize - o1*2, cellSize - o1*2);
-                            
-                            ctx.fillStyle = c3;
-                            const o2 = cellSize * 0.24;
-                            ctx.fillRect(x + o2, y + o2, cellSize - o2*2, cellSize - o2*2);
-                            
-                            ctx.fillStyle = c2;
-                            const o3 = cellSize * 0.36;
-                            ctx.fillRect(x + o3, y + o3, cellSize - o3*2, cellSize - o3*2);
-                        } else if (style === 'flower') {
-                            ctx.fillStyle = c3;
-                            ctx.fillRect(x, y, cellSize, cellSize);
-                            
-                            ctx.fillStyle = c2;
-                            ctx.beginPath();
-                            ctx.arc(x + cellSize/2, y + cellSize/2, cellSize * 0.42, 0, Math.PI * 2);
-                            ctx.fill();
-                            
-                            ctx.fillStyle = c1;
-                            ctx.beginPath();
-                            ctx.arc(x + cellSize/2, y + cellSize/2, cellSize * 0.18, 0, Math.PI * 2);
-                            ctx.fill();
-                        } else if (style === 'mitered') {
-                            ctx.fillStyle = c2;
-                            ctx.fillRect(x, y, cellSize, cellSize);
-                            
-                            ctx.fillStyle = c3;
-                            const o1 = cellSize * 0.12;
-                            ctx.fillRect(x + o1, y + o1, cellSize - o1, cellSize - o1);
-                            
-                            ctx.fillStyle = c4;
-                            const o2 = cellSize * 0.26;
-                            ctx.fillRect(x + o2, y + o2, cellSize - o2, cellSize - o2);
-                            
-                            ctx.fillStyle = c1;
-                            const o3 = cellSize * 0.40;
-                            ctx.fillRect(x + o3, y + o3, cellSize - o3, cellSize - o3);
-                        } else if (style === 'diamond') {
-                            const cx = x + cellSize/2;
-                            const cy = y + cellSize/2;
-                            
-                            ctx.fillStyle = c1;
-                            ctx.beginPath();
-                            ctx.moveTo(cx, cy);
-                            ctx.lineTo(x, y);
-                            ctx.lineTo(x + cellSize, y);
-                            ctx.closePath();
-                            ctx.fill();
-                            
-                            ctx.fillStyle = c2;
-                            ctx.beginPath();
-                            ctx.moveTo(cx, cy);
-                            ctx.lineTo(x + cellSize, y);
-                            ctx.lineTo(x + cellSize, y + cellSize);
-                            ctx.closePath();
-                            ctx.fill();
-                            
-                            ctx.fillStyle = c3;
-                            ctx.beginPath();
-                            ctx.moveTo(cx, cy);
-                            ctx.lineTo(x + cellSize, y + cellSize);
-                            ctx.lineTo(x, y + cellSize);
-                            ctx.closePath();
-                            ctx.fill();
-                            
-                            ctx.fillStyle = c4;
-                            ctx.beginPath();
-                            ctx.moveTo(cx, cy);
-                            ctx.lineTo(x, y + cellSize);
-                            ctx.lineTo(x, y);
-                            ctx.closePath();
-                            ctx.fill();
-                        } else if (style === 'target') {
-                            ctx.fillStyle = c4;
-                            ctx.fillRect(x, y, cellSize, cellSize);
-                            
-                            ctx.fillStyle = c3;
-                            ctx.beginPath();
-                            ctx.arc(x + cellSize/2, y + cellSize/2, cellSize * 0.55, 0, Math.PI * 2);
-                            ctx.fill();
-                            
-                            ctx.fillStyle = c2;
-                            ctx.beginPath();
-                            ctx.arc(x + cellSize/2, y + cellSize/2, cellSize * 0.35, 0, Math.PI * 2);
-                            ctx.fill();
-                            
-                            ctx.fillStyle = c1;
-                            ctx.beginPath();
-                            ctx.arc(x + cellSize/2, y + cellSize/2, cellSize * 0.15, 0, Math.PI * 2);
-                            ctx.fill();
-                        } else if (style === 'checker') {
-                            ctx.fillStyle = c1;
-                            ctx.fillRect(x, y, cellSize/2, cellSize/2);
-                            
-                            ctx.fillStyle = c2;
-                            ctx.fillRect(x + cellSize/2, y, cellSize/2, cellSize/2);
-                            
-                            ctx.fillStyle = c4;
-                            ctx.fillRect(x, y + cellSize/2, cellSize/2, cellSize/2);
-                            
-                            ctx.fillStyle = c3;
-                            ctx.fillRect(x + cellSize/2, y + cellSize/2, cellSize/2, cellSize/2);
-                        }
+                        drawCanvasMotif(ctx, curX, curY, curW, pattern.style, pattern.colors);
                     } else {
                         ctx.fillStyle = '#1e294b';
-                        ctx.fillRect(x, y, cellSize, cellSize);
+                        ctx.fillRect(curX, curY, curW, curH);
                     }
                 }
                 
-                drawStitchOverlay(ctx, x, y, cellSize);
+                drawStitchOverlay(ctx, curX, curY, Math.min(curW, curH));
                 ctx.restore();
+
+                curX += curW + spacing;
             }
+            curY += curH + spacing;
         }
         
         const link = document.createElement('a');
