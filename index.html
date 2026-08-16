@@ -123,11 +123,31 @@
                 </div>
 
                 <!-- Single Global Color Customization Dropdown -->
-                <div class="setting-group" style="margin-bottom: 14px;">
+                <div class="setting-group" style="margin-bottom: 10px;">
                     <label for="global-palette-select">Color Palette</label>
                     <select id="global-palette-select">
                         <!-- Populated dynamically by app.js -->
                     </select>
+                </div>
+
+                <!-- Color Extraction from Inspiration Photo -->
+                <div id="photo-palette-card" class="setting-group" style="margin-bottom: 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass); border-radius: 12px; padding: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <label style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 0;">Color Extraction</label>
+                    </div>
+                    <div class="photo-upload-box">
+                        <input type="file" id="photo-upload-input" accept="image/*" style="display:none;" />
+                        <button id="trigger-photo-upload-btn" class="btn btn-secondary" type="button" style="width: 100%; font-size: 12px; padding: 7px 10px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                            Extract Palette from Photo
+                        </button>
+                    </div>
+                    <div id="photo-swatches-container" style="display:none; margin-top: 8px;">
+                        <div id="photo-swatches-list" class="photo-swatches-list"></div>
+                        <button id="apply-photo-palette-btn" class="btn btn-secondary" type="button" style="margin-top: 8px; width: 100%; font-size: 12px; padding: 6px 10px;">
+                            Apply Extracted Palette
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Border Pattern Selectors -->
@@ -214,26 +234,7 @@
                 </div>
             </div>
 
-            <!-- Photo-to-Palette AI (IN SETTINGS MENU) -->
-            <div id="photo-palette-card" class="panel-card">
-                <div class="card-header-row">
-                    <h2>Photo-to-Yarn AI</h2>
-                </div>
-                <p class="sync-hint">Upload a photo to extract dominant colors and match to commercial yarn brands.</p>
-                <div class="photo-upload-box">
-                    <input type="file" id="photo-upload-input" accept="image/*" style="display:none;" />
-                    <button id="trigger-photo-upload-btn" class="btn btn-secondary" type="button" style="width: 100%;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                        Upload Inspiration Photo
-                    </button>
-                </div>
-                <div id="photo-swatches-container" style="display:none; margin-top: 12px;">
-                    <div id="photo-swatches-list" class="photo-swatches-list"></div>
-                    <button id="apply-photo-palette-btn" class="btn btn-secondary" type="button" style="margin-top: 8px; width: 100%;">
-                        Apply Photo Palette to Pattern
-                    </button>
-                </div>
-            </div>
+
 
             <!-- Application Settings (Unit System) -->
             <div id="app-settings-card" class="panel-card">
