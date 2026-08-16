@@ -280,6 +280,11 @@
         blanketGrid: [],
         completedSquares: new Set(),
         lockedCells: new Set(),
+        cellUnitSize: 10,
+        cellUnitType: 'cm',
+        cellRoundsCount: 4,
+        cellProgress: {},
+        activeFocusCell: null,
         workMode: false,
         paintMode: false,
         activeBrushPatternId: 0,
@@ -783,6 +788,85 @@
         }
     };
 
+    const convertPhotoToBlanket = (file) => {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = state.cols;
+                canvas.height = state.rows;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, state.cols, state.rows);
+                const imgData = ctx.getImageData(0, 0, state.cols, state.rows).data;
+
+                const currentPalette = (state.palette && state.palette.length) ? state.palette : COMMERCIAL_PALETTES[0].colors;
+                const createdPatterns = {};
+
+                for (let r = 0; r < state.rows; r++) {
+                    for (let c = 0; c < state.cols; c++) {
+                        const idx = (r * state.cols + c) * 4;
+                        const pr = imgData[idx];
+                        const pg = imgData[idx + 1];
+                        const pb = imgData[idx + 2];
+                        const pa = imgData[idx + 3];
+
+                        if (pa < 50) continue;
+
+                        let bestHex = currentPalette[0];
+                        let minDist = Infinity;
+                        currentPalette.forEach(hex => {
+                            const [cr, cg, cb] = hexToRgb(hex);
+                            const dist = Math.sqrt((pr - cr)**2 + (pg - cg)**2 + (pb - cb)**2);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                bestHex = hex;
+                            }
+                        });
+
+                        if (!createdPatterns[bestHex]) {
+                            let existing = state.patterns.find(p => p.colors[0] === bestHex && p.style === 'solid');
+                            if (!existing) {
+                                const newId = state.nextPatternId++;
+                                const match = findClosestYarnShade(bestHex);
+                                existing = {
+                                    id: newId,
+                                    name: `${match.shadeName || bestHex}`,
+                                    colors: [bestHex, bestHex, bestHex, bestHex],
+                                    style: 'solid',
+                                    quantity: 0
+                                };
+                                state.patterns.push(existing);
+                            }
+                            createdPatterns[bestHex] = existing.id;
+                        }
+
+                        state.blanketGrid[r][c] = createdPatterns[bestHex];
+                    }
+                }
+
+                // Recalculate pattern quantities
+                const cellCounts = {};
+                for (let r = 0; r < state.rows; r++) {
+                    for (let c = 0; c < state.cols; c++) {
+                        const pid = state.blanketGrid[r][c];
+                        cellCounts[pid] = (cellCounts[pid] || 0) + 1;
+                    }
+                }
+                state.patterns.forEach(p => {
+                    p.quantity = cellCounts[p.id] || 0;
+                });
+
+                renderPatternsList();
+                renderBlanket();
+                showToast(`✅ Converted photo to ${state.rows}×${state.cols} Graphghan blanket!`);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+
     // =========================================================================
     // 5d. Round-by-Round Written Pattern Generator
     // =========================================================================
@@ -843,6 +927,9 @@
         const colsInput = document.querySelector('#columns');
         const bWidthSelect = document.querySelector('#border-width-select');
         const bStyleSelect = document.querySelector('#border-pattern-select');
+        const cellUnitInput = document.querySelector('#cell-unit-size');
+        const cellUnitTypeSelect = document.querySelector('#cell-unit-type');
+        const cellRoundsInput = document.querySelector('#cell-rounds-count');
         
         if (rowsInput) {
             const rVal = parseInt(rowsInput.value);
@@ -857,6 +944,24 @@
         }
         if (bStyleSelect) {
             state.borderStyle = bStyleSelect.value || 'solid';
+        }
+        if (cellUnitInput) {
+            const uVal = parseFloat(cellUnitInput.value);
+            state.cellUnitSize = (!isNaN(uVal) && uVal > 0) ? uVal : 10;
+        }
+        if (cellUnitTypeSelect) {
+            state.cellUnitType = cellUnitTypeSelect.value || 'cm';
+        }
+        if (cellRoundsInput) {
+            const rndVal = parseInt(cellRoundsInput.value);
+            state.cellRoundsCount = (!isNaN(rndVal) && rndVal > 0) ? rndVal : 4;
+        }
+
+        const totalDimBadge = document.querySelector('#blanket-total-dim');
+        if (totalDimBadge) {
+            const totW = Math.round(state.cols * state.cellUnitSize * 10) / 10;
+            const totH = Math.round(state.rows * state.cellUnitSize * 10) / 10;
+            totalDimBadge.textContent = `${totW} × ${totH} ${state.cellUnitType}`;
         }
 
         const bWidth = state.borderWidth;
@@ -893,6 +998,133 @@
                 badge.title += ` Note: Grids >1600 cells may impact DOM rendering performance on low-end devices.`;
             }
         }
+    };
+
+    // Open Cell Focus / Micro-Progress Tracker Modal
+    const openCellFocusModal = (r, c) => {
+        state.activeFocusCell = { r, c };
+        const modal = document.querySelector('#cell-focus-modal');
+        if (!modal) return;
+
+        const pId = state.blanketGrid && state.blanketGrid[r] ? state.blanketGrid[r][c] : 0;
+        const pattern = state.patterns.find(p => p.id === pId) || {
+            name: `Square [${r+1}, ${c+1}]`,
+            style: 'classic',
+            colors: ['#e6ded2', '#b49b9c', '#886e70', '#d8c1c5']
+        };
+
+        const coordBadge = document.querySelector('#focus-cell-coord');
+        if (coordBadge) coordBadge.textContent = `Row ${r + 1}, Col ${c + 1}`;
+
+        const nameEl = document.querySelector('#focus-pattern-name');
+        if (nameEl) nameEl.textContent = pattern.name || `Square #${pId}`;
+
+        const dimEl = document.querySelector('#focus-cell-dim');
+        if (dimEl) dimEl.textContent = `${state.cellUnitSize} × ${state.cellUnitSize} ${state.cellUnitType}`;
+
+        const styleEl = document.querySelector('#focus-cell-style');
+        if (styleEl) styleEl.textContent = PATTERN_STYLES[pattern.style]?.name || pattern.style;
+
+        // Render preview tile
+        const previewEl = document.querySelector('#focus-cell-preview');
+        if (previewEl) {
+            previewEl.className = 'focus-cell-preview';
+            const styleDetails = getPatternStyleDetails(pattern.style);
+            previewEl.classList.add(styleDetails.className);
+            previewEl.style = getPatternColorVariables(pattern.colors);
+        }
+
+        // Checklist logic
+        const checklistEl = document.querySelector('#cell-rounds-checklist');
+        const percentEl = document.querySelector('#focus-cell-percent');
+        const completeBtn = document.querySelector('#complete-cell-btn');
+
+        const key = `${r}-${c}`;
+        const totalRounds = state.cellRoundsCount || 4;
+        if (!state.cellProgress[key]) {
+            const isCompleted = state.completedSquares.has(`${r + state.borderWidth}-${c + state.borderWidth}`);
+            const initialRounds = [];
+            if (isCompleted) {
+                for (let i = 0; i < totalRounds; i++) initialRounds.push(i);
+            }
+            state.cellProgress[key] = { completedRounds: initialRounds };
+        }
+
+        const renderRoundsChecklist = () => {
+            if (!checklistEl) return;
+            checklistEl.innerHTML = '';
+            const completedRounds = new Set(state.cellProgress[key].completedRounds || []);
+            const pct = Math.round((completedRounds.size / totalRounds) * 100);
+            if (percentEl) percentEl.textContent = `${completedRounds.size} / ${totalRounds} (${pct}%)`;
+
+            const colors = pattern.colors || ['#e6ded2', '#b49b9c', '#886e70', '#d8c1c5'];
+            const roundNames = [
+                'Center Ring / Magic Loop',
+                'Round 2 (Inner Clusters)',
+                'Round 3 (Middle Expansion)',
+                'Round 4 (Outer Border / Join)',
+                'Round 5 (Extension)',
+                'Round 6 (Finishing)'
+            ];
+
+            for (let i = 0; i < totalRounds; i++) {
+                const roundColor = colors[i % colors.length] || colors[0];
+                const isDone = completedRounds.has(i);
+                const item = document.createElement('div');
+                item.className = `round-check-item ${isDone ? 'done' : ''}`;
+                item.innerHTML = `
+                    <input type="checkbox" class="round-checkbox" ${isDone ? 'checked' : ''} />
+                    <span class="round-color-dot" style="background:${roundColor};"></span>
+                    <div class="round-info">
+                        <span class="round-title">Round ${i + 1}: ${roundNames[i] || 'Round ' + (i+1)}</span>
+                        <span class="round-sub">Color: ${roundColor}</span>
+                    </div>
+                `;
+
+                const chk = item.querySelector('.round-checkbox');
+                const toggle = (e) => {
+                    if (e.target !== chk) chk.checked = !chk.checked;
+                    if (chk.checked) {
+                        completedRounds.add(i);
+                    } else {
+                        completedRounds.delete(i);
+                    }
+                    state.cellProgress[key].completedRounds = Array.from(completedRounds);
+
+                    // Update cell status in blanket
+                    const fullGridKey = `${r + state.borderWidth}-${c + state.borderWidth}`;
+                    const tableCell = document.querySelector(`.cellSquare[data-in-row="${r}"][data-in-col="${c}"]`);
+                    if (completedRounds.size === totalRounds) {
+                        state.completedSquares.add(fullGridKey);
+                        if (tableCell) tableCell.classList.add('completed');
+                    } else {
+                        state.completedSquares.delete(fullGridKey);
+                        if (tableCell) tableCell.classList.remove('completed');
+                    }
+                    updateWorkModeProgress();
+                    renderRoundsChecklist();
+                };
+
+                item.addEventListener('click', toggle);
+                checklistEl.appendChild(item);
+            }
+
+            if (completeBtn) {
+                const allDone = completedRounds.size === totalRounds;
+                completeBtn.textContent = allDone ? 'Mark Incomplete ↺' : 'Mark Square Complete ✓';
+                completeBtn.className = allDone ? 'btn btn-secondary' : 'btn btn-primary';
+                completeBtn.style.flex = '1';
+            }
+        };
+
+        renderRoundsChecklist();
+        modal.style.display = 'flex';
+    };
+
+    const closeCellFocusModal = () => {
+        const modal = document.querySelector('#cell-focus-modal');
+        if (modal) modal.style.display = 'none';
+        state.activeFocusCell = null;
     };
 
     // Triggered when rows/columns inputs change
@@ -1372,15 +1604,21 @@
 
                     if (!state.workMode) return;
                     
-                    const key = `${r}-${c}`;
-                    if (state.completedSquares.has(key)) {
-                        state.completedSquares.delete(key);
-                        cell.classList.remove('completed');
+                    const inR = r - bWidth;
+                    const inC = c - bWidth;
+                    if (inR >= 0 && inR < state.rows && inC >= 0 && inC < state.cols) {
+                        openCellFocusModal(inR, inC);
                     } else {
-                        state.completedSquares.add(key);
-                        cell.classList.add('completed');
+                        const key = `${r}-${c}`;
+                        if (state.completedSquares.has(key)) {
+                            state.completedSquares.delete(key);
+                            cell.classList.remove('completed');
+                        } else {
+                            state.completedSquares.add(key);
+                            cell.classList.add('completed');
+                        }
+                        updateWorkModeProgress();
                     }
-                    updateWorkModeProgress();
                 });
 
                 row.appendChild(cell);
@@ -2343,6 +2581,23 @@
             });
         }
 
+        // Cell / Motif Size Setting Listeners
+        const cellUnitInput = document.querySelector('#cell-unit-size');
+        const cellUnitTypeSelect = document.querySelector('#cell-unit-type');
+        const cellRoundsInput = document.querySelector('#cell-rounds-count');
+
+        if (cellUnitInput) {
+            cellUnitInput.addEventListener('input', updateDimensionsInfo);
+            cellUnitInput.addEventListener('change', updateDimensionsInfo);
+        }
+        if (cellUnitTypeSelect) {
+            cellUnitTypeSelect.addEventListener('change', updateDimensionsInfo);
+        }
+        if (cellRoundsInput) {
+            cellRoundsInput.addEventListener('input', updateDimensionsInfo);
+            cellRoundsInput.addEventListener('change', updateDimensionsInfo);
+        }
+
         // Photo-to-Palette AI Upload Handlers
         const triggerPhotoBtn = document.querySelector('#trigger-photo-upload-btn');
         const photoInput = document.querySelector('#photo-upload-input');
@@ -2360,6 +2615,120 @@
         if (applyPhotoBtn) {
             applyPhotoBtn.addEventListener('click', applyPhotoPaletteToState);
         }
+
+        // Convert Photo to Blanket (Graphghan) Handlers
+        const triggerPhotoBlanketBtn = document.querySelector('#trigger-photo-blanket-btn');
+        const photoBlanketInput = document.querySelector('#photo-blanket-input');
+
+        if (triggerPhotoBlanketBtn && photoBlanketInput) {
+            triggerPhotoBlanketBtn.addEventListener('click', () => photoBlanketInput.click());
+            photoBlanketInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    convertPhotoToBlanket(e.target.files[0]);
+                }
+            });
+        }
+
+        // Cell Focus Modal Event Handlers
+        const closeFocusBtn = document.querySelector('#close-cell-focus-btn');
+        const focusOverlay = document.querySelector('#cell-focus-overlay');
+        const prevCellBtn = document.querySelector('#prev-cell-btn');
+        const nextCellBtn = document.querySelector('#next-cell-btn');
+        const completeCellBtn = document.querySelector('#complete-cell-btn');
+        const toggleAllRoundsBtn = document.querySelector('#toggle-all-rounds-btn');
+
+        if (closeFocusBtn) closeFocusBtn.addEventListener('click', closeCellFocusModal);
+        if (focusOverlay) focusOverlay.addEventListener('click', closeCellFocusModal);
+
+        if (prevCellBtn) {
+            prevCellBtn.addEventListener('click', () => {
+                if (!state.activeFocusCell) return;
+                let { r, c } = state.activeFocusCell;
+                if (c > 0) {
+                    c--;
+                } else if (r > 0) {
+                    r--;
+                    c = state.cols - 1;
+                }
+                openCellFocusModal(r, c);
+            });
+        }
+
+        if (nextCellBtn) {
+            nextCellBtn.addEventListener('click', () => {
+                if (!state.activeFocusCell) return;
+                let { r, c } = state.activeFocusCell;
+                if (c < state.cols - 1) {
+                    c++;
+                } else if (r < state.rows - 1) {
+                    r++;
+                    c = 0;
+                }
+                openCellFocusModal(r, c);
+            });
+        }
+
+        if (completeCellBtn) {
+            completeCellBtn.addEventListener('click', () => {
+                if (!state.activeFocusCell) return;
+                const { r, c } = state.activeFocusCell;
+                const key = `${r}-${c}`;
+                const totalRounds = state.cellRoundsCount || 4;
+                const currentDone = state.cellProgress[key] && state.cellProgress[key].completedRounds.length === totalRounds;
+
+                const fullGridKey = `${r + state.borderWidth}-${c + state.borderWidth}`;
+                const tableCell = document.querySelector(`.cellSquare[data-in-row="${r}"][data-in-col="${c}"]`);
+
+                if (currentDone) {
+                    // Mark incomplete
+                    state.cellProgress[key] = { completedRounds: [] };
+                    state.completedSquares.delete(fullGridKey);
+                    if (tableCell) tableCell.classList.remove('completed');
+                } else {
+                    // Mark all done
+                    const allRounds = [];
+                    for (let i = 0; i < totalRounds; i++) allRounds.push(i);
+                    state.cellProgress[key] = { completedRounds: allRounds };
+                    state.completedSquares.add(fullGridKey);
+                    if (tableCell) tableCell.classList.add('completed');
+                }
+                updateWorkModeProgress();
+                openCellFocusModal(r, c);
+            });
+        }
+
+        if (toggleAllRoundsBtn) {
+            toggleAllRoundsBtn.addEventListener('click', () => {
+                if (!state.activeFocusCell) return;
+                const { r, c } = state.activeFocusCell;
+                const key = `${r}-${c}`;
+                const totalRounds = state.cellRoundsCount || 4;
+                const allRounds = [];
+                for (let i = 0; i < totalRounds; i++) allRounds.push(i);
+                state.cellProgress[key] = { completedRounds: allRounds };
+
+                const fullGridKey = `${r + state.borderWidth}-${c + state.borderWidth}`;
+                const tableCell = document.querySelector(`.cellSquare[data-in-row="${r}"][data-in-col="${c}"]`);
+                state.completedSquares.add(fullGridKey);
+                if (tableCell) tableCell.classList.add('completed');
+
+                updateWorkModeProgress();
+                openCellFocusModal(r, c);
+            });
+        }
+
+        window.addEventListener('keydown', (e) => {
+            const modal = document.querySelector('#cell-focus-modal');
+            if (modal && modal.style.display !== 'none') {
+                if (e.key === 'Escape') {
+                    closeCellFocusModal();
+                } else if (e.key === 'ArrowLeft') {
+                    if (prevCellBtn) prevCellBtn.click();
+                } else if (e.key === 'ArrowRight') {
+                    if (nextCellBtn) nextCellBtn.click();
+                }
+            }
+        });
 
         // Written Pattern Generator Handlers
         const toggleWrittenBtn = document.querySelector('#toggle-written-instructions-btn');
