@@ -4,9 +4,9 @@
 (function() {
     'use strict';
 
-    // Default Firebase Web Config (Connected to blanketdesign-6f376)
+    // Default Firebase Web Config (Managed dynamically by ProjectsProxi)
     const defaultConfig = {
-        apiKey: "AIzaSy_PROJECTSPROXI_MANAGED_KEY",
+        apiKey: "__PROJECTSPROXI_MANAGED__",
         authDomain: "blanketdesign-6f376.firebaseapp.com",
         projectId: "blanketdesign-6f376",
         storageBucket: "blanketdesign-6f376.firebasestorage.app",
