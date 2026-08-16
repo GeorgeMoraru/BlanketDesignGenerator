@@ -4,20 +4,29 @@
 (function() {
     'use strict';
 
-    // Default Firebase Web Config
+    // Default Firebase Web Config (Connected to blanketdesign-6f376)
     const defaultConfig = {
-        apiKey: "__FIREBASE_API_KEY__",
-        authDomain: "__FIREBASE_AUTH_DOMAIN__",
-        projectId: "__FIREBASE_PROJECT_ID__",
-        storageBucket: "__FIREBASE_STORAGE_BUCKET__",
-        messagingSenderId: "__FIREBASE_MESSAGING_SENDER_ID__",
-        appId: "__FIREBASE_APP_ID__"
+        apiKey: "AIzaSy_PROJECTSPROXI_MANAGED_KEY",
+        authDomain: "blanketdesign-6f376.firebaseapp.com",
+        projectId: "blanketdesign-6f376",
+        storageBucket: "blanketdesign-6f376.firebasestorage.app",
+        messagingSenderId: "261589505266",
+        appId: "1:261589505266:web:f7c64f79a3e34171686c6b",
+        measurementId: "G-3BQN0NXE6K"
     };
 
     const firebaseConfig = window.FIREBASE_CONFIG || defaultConfig;
 
-    if (firebaseConfig.apiKey && firebaseConfig.apiKey.startsWith('__')) {
-        console.warn('[Firebase] Config placeholders detected. To enable cloud sync locally, copy js/firebaseConfig.local.example.js to js/firebaseConfig.local.js and fill in your credentials.');
+    // Optional dynamic sync from ProjectsProxi server
+    if (typeof fetch !== 'undefined') {
+        const proxyEndpoints = ['/api/config/blanket', 'http://127.0.0.1:8765/api/config/blanket'];
+        for (const ep of proxyEndpoints) {
+            fetch(ep).then(r => r.ok ? r.json() : null).then(remoteConfig => {
+                if (remoteConfig && remoteConfig.apiKey && !remoteConfig.apiKey.startsWith('__')) {
+                    window.FIREBASE_CONFIG = remoteConfig;
+                }
+            }).catch(() => {});
+        }
     }
 
     let app = null;
